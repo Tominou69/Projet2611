@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<div class="page-accueil">
+<section class="hero">
+    <div>
+        <h1>Bienvenue sur le site du jeu de MORPIONS avancé !</h1>
+        <p>
+            créez des équipes équilibrées,
+            lancez des parties (mode normal ou avancé)
+        </p>
+        <ul>
+            <li>Construisez vos équipes à partir des morpions disponibles</li>
+            <li>Démarrez une partie avec une configuration 3x3 ou 4x4</li>
+            <li>Analysez l'historique des actions et les statistiques clés</li>
+        </ul>
+    </div>
+    <figure>
+        <img src="{{ SESSION['DIRECTORY'] }}/static/img/Lesmorpions.png" alt="illustration morpion">
+    </figure>
+</section>
+
+<section class="stats-section">
+    <h3>Statistiques express</h3>
+    <div class="stats-grid">
+        {% for item in REQUEST_VARS['table_counts'] %}
+        <article class="stat-card">
+            <span class="stat-label">{{ item.label }}</span>
+            <span class="stat-value">{{ item.value }}</span>
+        </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section>
+    <h3>Top 3 des équipes avec le plus de victoires</h3>
+    {% if REQUEST_VARS['top_equipes'] %}
+    <ol class="top-equipes">
+        {% for equipe in REQUEST_VARS['top_equipes'] %}
+        <li>
+            <strong>{{ equipe.nom }}</strong>
+            — {{ equipe.victoires }} victoire{% if equipe.victoires|int > 1 %}s{% endif %}
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="alert-warning">Aucune équipe victorieuse n'a été enregistrée pour le moment.</p>
+    {% endif %}
+</section>
+
+<section>
+    <h3>Durée des parties terminées</h3>
+    <div class="stats-grid two-cols">
+        <article class="stat-card">
+            <span class="stat-label">Plus rapide</span>
+            {% if REQUEST_VARS['partie_plus_rapide'] %}
+            <p class="stat-value">{{ REQUEST_VARS['partie_plus_rapide'].duree }}</p>
+            <p class="stat-meta">{{ REQUEST_VARS['partie_plus_rapide'].affiche }}</p>
+            {% else %}
+            <p class="stat-meta">Aucune partie terminée.</p>
+            {% endif %}
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Plus longue</span>
+            {% if REQUEST_VARS['partie_plus_longue'] %}
+            <p class="stat-value">{{ REQUEST_VARS['partie_plus_longue'].duree }}</p>
+            <p class="stat-meta">{{ REQUEST_VARS['partie_plus_longue'].affiche }}</p>
+            {% else %}
+            <p class="stat-meta">Aucune partie terminée.</p>
+            {% endif %}
+        </article>
+    </div>
+</section>
+
+<section>
+    <h3>Journalisation moyenne par mois</h3>
+    {% if REQUEST_VARS['journal_stats'] %}
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mois</th>
+                    <th>Lignes totales</th>
+                    <th>Parties concernées</th>
+                    <th>Moyenne lignes/partie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ligne in REQUEST_VARS['journal_stats'] %}
+                <tr>
+                    <td>{{ "%02d"|format(ligne.mois) }}/{{ ligne.annee }}</td>
+                    <td>{{ ligne.nb_lignes }}</td>
+                    <td>{{ ligne.nb_parties }}</td>
+                    <td>{{ ligne.nb_moyen }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="alert-warning">Le journal n'a encore enregistré aucune action.</p>
+    {% endif %}
+{% include 'message.html' %}
+</div>
+{% endblock %}

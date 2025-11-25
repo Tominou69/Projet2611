@@ -1,0 +1,280 @@
+================================================================================
+DIAGRAMME ENTITÉ-ASSOCIATION (E/A)
+Projet : Jeu de Morpion Avancé - BDW 2025
+================================================================================
+
+LÉGENDE :
+---------
+[ENTITÉ] = Entité forte
+(attribut_clé) = Clé primaire
+attribut = Attribut simple
+*attribut* = Attribut obligatoire (NOT NULL)
+
+================================================================================
+ENTITÉS
+================================================================================
+
+[MORPION]
+---------
+Attributs:
+  - (id_morpion) : INTEGER [PK]
+  - *nom : VARCHAR(100) [UNIQUE]
+  - *image : VARCHAR(255)
+  - *points_vie : INTEGER [>=1]
+  - *points_attaque : INTEGER [>=1]
+  - *points_mana : INTEGER [>=1]
+  - *points_reussite : INTEGER [>=1]
+  - date_creation : TIMESTAMP
+
+Contraintes:
+  - Somme des points (vie + attaque + mana + réussite) = 15
+  - Chaque caractéristique >= 1
+
+Description:
+  Un morpion est un template/modèle réutilisable qui peut être assigné à 
+  plusieurs équipes. C'est une entité forte indépendante.
+
+
+[ÉQUIPE]
+--------
+Attributs:
+  - (id_equipe) : INTEGER [PK]
+  - *nom : VARCHAR(100) [UNIQUE]
+  - *couleur : VARCHAR(50) [UNIQUE]
+  - date_creation : TIMESTAMP
+
+Contraintes:
+  - Chaque équipe doit avoir entre 6 et 8 morpions
+  - La couleur est unique pour distinguer visuellement les équipes
+
+Description:
+  Une équipe est composée de 6 à 8 morpions. Les morpions étant des templates,
+  un même morpion peut appartenir à plusieurs équipes différentes.
+
+
+[CONFIGURATION]
+---------------
+Attributs:
+  - (id_configuration) : INTEGER [PK]
+  - *taille_grille : INTEGER [3 ou 4]
+  - *nb_max_tours : INTEGER [>0]
+  - somme_caracteristiques : INTEGER [défaut: 15]
+  - date_creation : TIMESTAMP
+
+Description:
+  Stocke les paramètres de configuration datés pour les parties.
+  La taille de grille peut être 3x3 ou 4x4.
+
+
+[PARTIE]
+--------
+Attributs:
+  - (id_partie) : INTEGER [PK]
+  - *id_equipe1 : INTEGER [FK → ÉQUIPE]
+  - *id_equipe2 : INTEGER [FK → ÉQUIPE]
+  - id_equipe_gagnante : INTEGER [FK → ÉQUIPE] (nullable)
+  - *id_configuration : INTEGER [FK → CONFIGURATION]
+  - date_debut : TIMESTAMP
+  - date_fin : TIMESTAMP (nullable)
+  - tour_actuel : INTEGER [défaut: 1]
+
+Contraintes:
+  - id_equipe1 ≠ id_equipe2
+  - id_equipe_gagnante doit être NULL ou égal à id_equipe1 ou id_equipe2
+  - date_fin >= date_debut (si date_fin n'est pas NULL)
+
+Description:
+  Représente une partie opposant deux équipes avec une configuration donnée.
+  L'équipe gagnante est NULL si la partie n'est pas terminée ou en cas de match nul.
+
+
+[JOURNAL]
+---------
+Attributs:
+  - (id_journal) : INTEGER [PK]
+  - *id_partie : INTEGER [FK → PARTIE]
+  - *numero_ligne : INTEGER
+  - date_action : TIMESTAMP
+  - *texte_action : TEXT
+
+Contraintes:
+  - (id_partie, numero_ligne) est UNIQUE
+  - Le numero_ligne est auto-incrémenté par partie
+
+Description:
+  Conserve un journal de toutes les actions réalisées pendant une partie.
+  Chaque ligne est identifiée par un numéro unique au niveau de la partie.
+
+
+================================================================================
+ASSOCIATIONS
+================================================================================
+
+Association: COMPOSE
+--------------------
+Type: N:N (Plusieurs à Plusieurs)
+Entre: MORPION ←→ ÉQUIPE
+
+Table de liaison: MORPION_EQUIPE
+Attributs:
+  - (id_equipe) : INTEGER [FK → ÉQUIPE] [PK composée]
+  - (id_morpion) : INTEGER [FK → MORPION] [PK composée]
+  - ordre_dans_equipe : INTEGER
+
+Cardinalités:
+  - Un MORPION peut faire partie de 0 à N équipes [0,N]
+  - Une ÉQUIPE est composée de 6 à 8 morpions [6,8]
+
+Description:
+  Cette association permet à un morpion (template) d'être réutilisé dans
+  plusieurs équipes. L'attribut ordre_dans_equipe permet de conserver l'ordre
+  des morpions au sein d'une équipe.
+
+
+Association: JOUE
+------------------
+Type: N:N avec entité associative PARTIE
+Entre: ÉQUIPE ←→ ÉQUIPE
+
+Implémentation:
+  - Une PARTIE référence deux équipes (id_equipe1 et id_equipe2)
+  - Cardinalité: Une équipe peut jouer 0 à N parties
+  
+Description:
+  Cette association représente l'opposition entre deux équipes lors d'une partie.
+  Les équipes doivent être différentes (id_equipe1 ≠ id_equipe2).
+
+
+Association: GAGNE
+------------------
+Type: 1:N (Un à Plusieurs)
+Entre: ÉQUIPE ←→ PARTIE
+
+Implémentation:
+  - Attribut id_equipe_gagnante dans PARTIE [FK → ÉQUIPE]
+  - Cardinalité: Une équipe peut gagner 0 à N parties
+  - Une partie a 0 ou 1 équipe gagnante
+
+Description:
+  Représente l'équipe qui a remporté la partie. NULL si la partie n'est pas
+  terminée ou en cas de match nul.
+
+
+Association: UTILISE
+--------------------
+Type: N:1 (Plusieurs à Un)
+Entre: PARTIE ←→ CONFIGURATION
+
+Implémentation:
+  - Attribut id_configuration dans PARTIE [FK → CONFIGURATION]
+  - Cardinalité: Une partie utilise exactement 1 configuration [1,1]
+  - Une configuration peut être utilisée par 0 à N parties [0,N]
+
+Description:
+  Chaque partie utilise une configuration spécifique (taille grille, nb tours max).
+
+
+Association: ENREGISTRE
+-----------------------
+Type: 1:N (Un à Plusieurs)
+Entre: PARTIE ←→ JOURNAL
+
+Implémentation:
+  - Attribut id_partie dans JOURNAL [FK → PARTIE]
+  - Cardinalité: Une partie possède 0 à N entrées de journal [0,N]
+  - Une entrée de journal appartient à exactement 1 partie [1,1]
+
+Description:
+  Chaque action réalisée pendant une partie est enregistrée dans le journal.
+
+
+================================================================================
+REPRÉSENTATION GRAPHIQUE ASCII
+================================================================================
+
+                                [CONFIGURATION]
+                                      |
+                                      | (1,1)
+                                      |
+                                  UTILISE
+                                      |
+                                      | (0,N)
+                                      ↓
+    [MORPION] ←―――――――――――→ [ÉQUIPE] ←―――――――――――→ [PARTIE] ――――――→ [JOURNAL]
+         (0,N)  COMPOSE  (6,8)    |              (1,1)    ENREGISTRE  (0,N)
+                                  |
+                                  ↓
+                               GAGNE (0,N)
+                                  |
+                                  ↓ (0,1)
+                               [PARTIE]
+                                  |
+                        ┌─────────┴─────────┐
+                        |                   |
+                     (1,1)               (1,1)
+                    ÉQUIPE1             ÉQUIPE2
+                        |                   |
+                   id_equipe1          id_equipe2
+
+
+Explication du cycle:
+  - Une PARTIE oppose 2 ÉQUIPES (id_equipe1 et id_equipe2)
+  - Une PARTIE peut avoir une ÉQUIPE gagnante (id_equipe_gagnante)
+  - Une ÉQUIPE est composée de 6 à 8 MORPIONS
+  - Une PARTIE utilise une CONFIGURATION
+  - Une PARTIE possède plusieurs entrées dans le JOURNAL
+
+
+================================================================================
+DÉPENDANCES FONCTIONNELLES PRINCIPALES
+================================================================================
+
+MORPION:
+  id_morpion → nom, image, points_vie, points_attaque, points_mana, 
+               points_reussite, date_creation
+
+ÉQUIPE:
+  id_equipe → nom, couleur, date_creation
+
+MORPION_EQUIPE:
+  (id_equipe, id_morpion) → ordre_dans_equipe
+
+CONFIGURATION:
+  id_configuration → taille_grille, nb_max_tours, somme_caracteristiques, 
+                     date_creation
+
+PARTIE:
+  id_partie → id_equipe1, id_equipe2, id_equipe_gagnante, id_configuration,
+              date_debut, date_fin, tour_actuel
+
+JOURNAL:
+  id_journal → id_partie, numero_ligne, date_action, texte_action
+  (id_partie, numero_ligne) → date_action, texte_action
+
+
+================================================================================
+NOTES DE CONCEPTION
+================================================================================
+
+1. NORMALISATION:
+   - Le schéma est en 3ème forme normale (3FN)
+   - Pas de dépendances transitives
+   - Toutes les clés étrangères sont indexées
+
+2. INTÉGRITÉ RÉFÉRENTIELLE:
+   - Toutes les relations utilisent des clés étrangères avec contraintes
+   - CASCADE sur suppression pour les tables de liaison et journal
+   - Triggers pour vérifier les contraintes métier (taille équipe, numéro ligne)
+
+3. PERFORMANCES:
+   - Index sur les colonnes fréquemment recherchées (nom, couleur, dates)
+   - Vues matérialisables pour les statistiques
+   - Numérotation automatique du journal par trigger
+
+4. ÉVOLUTIVITÉ:
+   - Le design permet d'ajouter facilement de nouvelles caractéristiques
+   - La configuration datée permet de modifier les règles dans le temps
+   - Le journal textuel permet une grande flexibilité
+
+================================================================================
+

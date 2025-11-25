@@ -1,0 +1,403 @@
+================================================================================
+SCHÉMA RELATIONNEL
+Projet : Jeu de Morpion Avancé - BDW 2025
+================================================================================
+
+LÉGENDE :
+---------
+_clé_primaire_ = Clé primaire (soulignée)
+#clé_étrangère# = Clé étrangère (précédée de #)
+NN = NOT NULL (obligatoire)
+U = UNIQUE
+D = DEFAULT (valeur par défaut)
+
+================================================================================
+TABLES
+================================================================================
+
+MORPION
+-------
+_id_morpion_ : INTEGER [PK, AUTO_INCREMENT]
+nom : VARCHAR(100) [NN, U]
+image : VARCHAR(255) [NN]
+points_vie : INTEGER [NN, CHECK >= 1]
+points_attaque : INTEGER [NN, CHECK >= 1]
+points_mana : INTEGER [NN, CHECK >= 1]
+points_reussite : INTEGER [NN, CHECK >= 1]
+date_creation : TIMESTAMP [D: CURRENT_TIMESTAMP]
+
+Contraintes:
+  - PK: id_morpion
+  - UNIQUE: nom
+  - CHECK: points_vie + points_attaque + points_mana + points_reussite = 15
+  - CHECK: points_vie >= 1 AND points_attaque >= 1 
+           AND points_mana >= 1 AND points_reussite >= 1
+
+Index:
+  - idx_morpion_nom ON nom
+
+
+ÉQUIPE
+------
+_id_equipe_ : INTEGER [PK, AUTO_INCREMENT]
+nom : VARCHAR(100) [NN, U]
+couleur : VARCHAR(50) [NN, U]
+date_creation : TIMESTAMP [D: CURRENT_TIMESTAMP]
+
+Contraintes:
+  - PK: id_equipe
+  - UNIQUE: nom
+  - UNIQUE: couleur
+
+Index:
+  - idx_equipe_nom ON nom
+  - idx_equipe_couleur ON couleur
+
+
+MORPION_EQUIPE (Table de liaison)
+--------------
+_#id_equipe#_ : INTEGER [PK composée, FK → ÉQUIPE(id_equipe)]
+_#id_morpion#_ : INTEGER [PK composée, FK → MORPION(id_morpion)]
+ordre_dans_equipe : INTEGER [NN]
+
+Contraintes:
+  - PK: (id_equipe, id_morpion)
+  - FK: id_equipe REFERENCES équipe(id_equipe) ON DELETE CASCADE
+  - FK: id_morpion REFERENCES morpion(id_morpion) ON DELETE CASCADE
+  - UNIQUE: (id_equipe, ordre_dans_equipe)
+  - TRIGGER: Vérifier qu'une équipe a maximum 8 morpions
+
+
+CONFIGURATION
+-------------
+_id_configuration_ : INTEGER [PK, AUTO_INCREMENT]
+taille_grille : INTEGER [NN, CHECK IN (3, 4)]
+nb_max_tours : INTEGER [NN, CHECK > 0]
+somme_caracteristiques : INTEGER [D: 15, CHECK > 0]
+date_creation : TIMESTAMP [D: CURRENT_TIMESTAMP]
+
+Contraintes:
+  - PK: id_configuration
+  - CHECK: taille_grille IN (3, 4)
+  - CHECK: nb_max_tours > 0
+  - CHECK: somme_caracteristiques > 0
+
+
+PARTIE
+------
+_id_partie_ : INTEGER [PK, AUTO_INCREMENT]
+#id_equipe1# : INTEGER [NN, FK → ÉQUIPE(id_equipe)]
+#id_equipe2# : INTEGER [NN, FK → ÉQUIPE(id_equipe)]
+#id_equipe_gagnante# : INTEGER [FK → ÉQUIPE(id_equipe), nullable]
+#id_configuration# : INTEGER [NN, FK → CONFIGURATION(id_configuration)]
+date_debut : TIMESTAMP [D: CURRENT_TIMESTAMP]
+date_fin : TIMESTAMP [nullable]
+tour_actuel : INTEGER [D: 1]
+
+Contraintes:
+  - PK: id_partie
+  - FK: id_equipe1 REFERENCES équipe(id_equipe)
+  - FK: id_equipe2 REFERENCES équipe(id_equipe)
+  - FK: id_equipe_gagnante REFERENCES équipe(id_equipe)
+  - FK: id_configuration REFERENCES configuration(id_configuration)
+  - CHECK: id_equipe1 != id_equipe2
+  - CHECK: id_equipe_gagnante IS NULL 
+           OR id_equipe_gagnante = id_equipe1 
+           OR id_equipe_gagnante = id_equipe2
+  - CHECK: date_fin IS NULL OR date_fin >= date_debut
+
+Index:
+  - idx_partie_dates ON (date_debut, date_fin)
+  - idx_partie_equipe1 ON id_equipe1
+  - idx_partie_equipe2 ON id_equipe2
+  - idx_partie_gagnante ON id_equipe_gagnante
+
+
+JOURNAL
+-------
+_id_journal_ : INTEGER [PK, AUTO_INCREMENT]
+#id_partie# : INTEGER [NN, FK → PARTIE(id_partie)]
+numero_ligne : INTEGER [NN]
+date_action : TIMESTAMP [D: CURRENT_TIMESTAMP]
+texte_action : TEXT [NN]
+
+Contraintes:
+  - PK: id_journal
+  - FK: id_partie REFERENCES partie(id_partie) ON DELETE CASCADE
+  - UNIQUE: (id_partie, numero_ligne)
+  - TRIGGER: Auto-incrémentation de numero_ligne par partie
+
+Index:
+  - idx_journal_partie ON (id_partie, numero_ligne)
+  - idx_journal_date ON date_action
+
+
+================================================================================
+VUES
+================================================================================
+
+V_TOP_EQUIPES
+-------------
+Description: Top 3 des équipes avec le plus de victoires
+
+Colonnes:
+  - id_equipe : INTEGER
+  - nom : VARCHAR(100)
+  - couleur : VARCHAR(50)
+  - nb_victoires : INTEGER
+
+Requête:
+SELECT 
+    e.id_equipe,
+    e.nom,
+    e.couleur,
+    COUNT(p.id_partie) AS nb_victoires
+FROM equipe e
+LEFT JOIN partie p ON e.id_equipe = p.id_equipe_gagnante
+GROUP BY e.id_equipe, e.nom, e.couleur
+ORDER BY nb_victoires DESC
+LIMIT 3;
+
+
+V_STATS_PARTIES
+---------------
+Description: Statistiques globales sur les parties
+
+Colonnes:
+  - nb_parties_totales : INTEGER
+  - nb_parties_terminees : INTEGER
+  - duree_min_secondes : FLOAT
+  - duree_max_secondes : FLOAT
+  - duree_moy_secondes : FLOAT
+
+Requête:
+SELECT 
+    COUNT(*) AS nb_parties_totales,
+    COUNT(CASE WHEN date_fin IS NOT NULL THEN 1 END) AS nb_parties_terminees,
+    MIN(EXTRACT(EPOCH FROM (date_fin - date_debut))) AS duree_min_secondes,
+    MAX(EXTRACT(EPOCH FROM (date_fin - date_debut))) AS duree_max_secondes,
+    AVG(EXTRACT(EPOCH FROM (date_fin - date_debut))) AS duree_moy_secondes
+FROM partie
+WHERE date_fin IS NOT NULL;
+
+
+V_JOURNAL_PAR_MOIS
+------------------
+Description: Nombre moyen de lignes de journal par mois/année
+
+Colonnes:
+  - annee : INTEGER
+  - mois : INTEGER
+  - nb_lignes_total : INTEGER
+  - nb_parties : INTEGER
+  - nb_moyen_lignes : FLOAT
+
+Requête:
+SELECT 
+    EXTRACT(YEAR FROM j.date_action) AS annee,
+    EXTRACT(MONTH FROM j.date_action) AS mois,
+    COUNT(*) AS nb_lignes_total,
+    COUNT(DISTINCT j.id_partie) AS nb_parties,
+    CAST(COUNT(*) AS FLOAT) / NULLIF(COUNT(DISTINCT j.id_partie), 0) 
+        AS nb_moyen_lignes
+FROM journal j
+GROUP BY 
+    EXTRACT(YEAR FROM j.date_action),
+    EXTRACT(MONTH FROM j.date_action)
+ORDER BY annee DESC, mois DESC;
+
+
+================================================================================
+TRIGGERS ET FONCTIONS
+================================================================================
+
+TRIGGER: trigger_check_taille_equipe
+-------------------------------------
+Événement: AFTER INSERT ON morpion_equipe
+Action: Vérifie qu'une équipe ne dépasse pas 8 morpions
+Fonction: check_taille_equipe()
+
+Code:
+CREATE OR REPLACE FUNCTION check_taille_equipe()
+RETURNS TRIGGER AS $$
+DECLARE
+    nb_morpions INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO nb_morpions
+    FROM morpion_equipe
+    WHERE id_equipe = NEW.id_equipe;
+    
+    IF nb_morpions > 8 THEN
+        RAISE EXCEPTION 'Une équipe ne peut pas avoir plus de 8 morpions';
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+TRIGGER: trigger_set_numero_ligne
+----------------------------------
+Événement: BEFORE INSERT ON journal
+Action: Auto-incrémente le numero_ligne pour chaque partie
+Fonction: set_numero_ligne()
+
+Code:
+CREATE OR REPLACE FUNCTION set_numero_ligne()
+RETURNS TRIGGER AS $$
+DECLARE
+    max_numero INTEGER;
+BEGIN
+    IF NEW.numero_ligne IS NULL THEN
+        SELECT COALESCE(MAX(numero_ligne), 0) + 1 INTO max_numero
+        FROM journal
+        WHERE id_partie = NEW.id_partie;
+        
+        NEW.numero_ligne := max_numero;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+
+================================================================================
+DÉPENDANCES FONCTIONNELLES ET NORMALISATION
+================================================================================
+
+ANALYSE DE LA 3ème FORME NORMALE (3FN):
+
+Table MORPION:
+  DF: id_morpion → {nom, image, points_vie, points_attaque, 
+                     points_mana, points_reussite, date_creation}
+  ✓ En 3FN: Pas de dépendance transitive
+
+Table ÉQUIPE:
+  DF: id_equipe → {nom, couleur, date_creation}
+  ✓ En 3FN: Pas de dépendance transitive
+
+Table MORPION_EQUIPE:
+  DF: (id_equipe, id_morpion) → ordre_dans_equipe
+  ✓ En 3FN: Clé composée, pas de dépendance partielle
+
+Table CONFIGURATION:
+  DF: id_configuration → {taille_grille, nb_max_tours, 
+                          somme_caracteristiques, date_creation}
+  ✓ En 3FN: Pas de dépendance transitive
+
+Table PARTIE:
+  DF: id_partie → {id_equipe1, id_equipe2, id_equipe_gagnante, 
+                    id_configuration, date_debut, date_fin, tour_actuel}
+  ✓ En 3FN: Pas de dépendance transitive
+
+Table JOURNAL:
+  DF1: id_journal → {id_partie, numero_ligne, date_action, texte_action}
+  DF2: (id_partie, numero_ligne) → {date_action, texte_action}
+  ✓ En 3FN: Deux clés candidates, pas de dépendance transitive
+
+
+TOUTES LES TABLES SONT EN 3ème FORME NORMALE ✓
+
+
+================================================================================
+CARDINALITÉS RÉCAPITULATIVES
+================================================================================
+
+MORPION ←→ ÉQUIPE (via MORPION_EQUIPE)
+  - Un MORPION peut appartenir à 0..N équipes
+  - Une ÉQUIPE contient 6..8 morpions
+  Relation: N:N
+
+ÉQUIPE ←→ PARTIE (en tant que participante)
+  - Une ÉQUIPE peut jouer 0..N parties
+  - Une PARTIE oppose exactement 2 équipes différentes
+  Relation: N:2
+
+ÉQUIPE ←→ PARTIE (en tant que gagnante)
+  - Une ÉQUIPE peut gagner 0..N parties
+  - Une PARTIE a 0..1 équipe gagnante
+  Relation: 1:N
+
+CONFIGURATION ←→ PARTIE
+  - Une CONFIGURATION peut être utilisée dans 0..N parties
+  - Une PARTIE utilise exactement 1 configuration
+  Relation: 1:N
+
+PARTIE ←→ JOURNAL
+  - Une PARTIE possède 0..N entrées de journal
+  - Une entrée JOURNAL appartient à exactement 1 partie
+  Relation: 1:N avec CASCADE DELETE
+
+
+================================================================================
+INTÉGRITÉ DES DONNÉES
+================================================================================
+
+1. Intégrité d'entité:
+   ✓ Toutes les tables ont une clé primaire
+   ✓ Les clés primaires sont NOT NULL et UNIQUE
+
+2. Intégrité de domaine:
+   ✓ Types de données appropriés
+   ✓ Contraintes CHECK sur les valeurs
+   ✓ Valeurs par défaut définies
+
+3. Intégrité référentielle:
+   ✓ Toutes les clés étrangères référencent des clés primaires existantes
+   ✓ Actions ON DELETE définies (CASCADE où approprié)
+
+4. Intégrité métier:
+   ✓ Contraintes CHECK pour les règles métier
+   ✓ Triggers pour les contraintes complexes
+   ✓ UNIQUE sur les combinaisons critiques
+
+
+================================================================================
+REQUÊTES SQL UTILES
+================================================================================
+
+-- Obtenir tous les morpions d'une équipe
+SELECT m.*
+FROM morpion m
+JOIN morpion_equipe me ON m.id_morpion = me.id_morpion
+WHERE me.id_equipe = ?
+ORDER BY me.ordre_dans_equipe;
+
+-- Obtenir l'historique d'une partie
+SELECT numero_ligne, date_action, texte_action
+FROM journal
+WHERE id_partie = ?
+ORDER BY numero_ligne;
+
+-- Vérifier si une équipe a entre 6 et 8 morpions
+SELECT e.nom, COUNT(me.id_morpion) AS nb_morpions
+FROM equipe e
+LEFT JOIN morpion_equipe me ON e.id_equipe = me.id_equipe
+GROUP BY e.id_equipe, e.nom
+HAVING COUNT(me.id_morpion) BETWEEN 6 AND 8;
+
+-- Obtenir les parties en cours
+SELECT p.*, e1.nom AS equipe1, e2.nom AS equipe2
+FROM partie p
+JOIN equipe e1 ON p.id_equipe1 = e1.id_equipe
+JOIN equipe e2 ON p.id_equipe2 = e2.id_equipe
+WHERE p.date_fin IS NULL;
+
+-- Statistiques d'une équipe
+SELECT 
+    e.nom,
+    COUNT(DISTINCT CASE WHEN p.id_equipe1 = e.id_equipe 
+                         OR p.id_equipe2 = e.id_equipe 
+                    THEN p.id_partie END) AS nb_parties_jouees,
+    COUNT(DISTINCT CASE WHEN p.id_equipe_gagnante = e.id_equipe 
+                    THEN p.id_partie END) AS nb_victoires
+FROM equipe e
+LEFT JOIN partie p ON e.id_equipe IN (p.id_equipe1, p.id_equipe2)
+WHERE e.id_equipe = ?
+GROUP BY e.id_equipe, e.nom;
+
+
+================================================================================
+FIN DU SCHÉMA RELATIONNEL
+================================================================================
+

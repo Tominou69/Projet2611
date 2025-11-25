@@ -1,0 +1,312 @@
+body {
+    background-color: #FFFFFF;
+}
+
+.page-accueil {
+    font-family: "Calibri", "Segoe UI", sans-serif;
+}
+
+header,
+nav,
+main,
+footer {
+    padding: 1em 0;
+}
+
+header {
+    background-color: #b0f0a1;
+    text-align: center;
+    border-radius: 1em;
+    font-family: "Calibri", "Segoe UI", sans-serif;
+}
+
+#div-central {
+    display: flex;
+	justify-content: space-between;
+	align-items: stretch;
+    margin: auto;
+	box-sizing: border-box;
+	height: 100%;
+}
+
+nav {
+	flex : 2;
+    background-color: #111111;
+    color: #ffffff;
+    padding-left: 0.5em;
+    padding-right: 0.5em;
+	margin-left: 2em;
+    line-height: 2em;
+}
+
+nav > ul {
+	padding-left: 0.5em;
+}
+
+nav a {
+    color: #ffffff;
+    text-decoration: none;
+}
+
+nav a:visited {
+    color: #dddddd;
+    text-decoration: none;
+}
+
+.hero {
+    display: flex;
+    gap: 2em;
+    align-items: center;
+    margin-bottom: 2em;
+}
+
+.hero figure {
+    flex: 1;
+    text-align: center;
+}
+
+.hero img {
+    max-width: 100%;
+    border-radius: 1em;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1em;
+    margin-bottom: 1.5em;
+}
+
+.stats-grid.two-cols {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.stat-card {
+    border: 1px solid #dddddd;
+    border-radius: 0.5em;
+    padding: 1em;
+    background-color: #f5f8ff;
+}
+
+.stat-label {
+    display: block;
+    font-size: 0.9em;
+    color: #555555;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.stat-value {
+    font-size: 2em;
+    font-weight: bold;
+}
+
+.stat-meta {
+    margin-top: 0.3em;
+    font-size: 0.9em;
+    color: #444444;
+}
+
+.top-equipes {
+    list-style: decimal;
+    padding-left: 1.5em;
+}
+
+.top-equipes li {
+    margin-bottom: 0.5em;
+}
+
+.form-equipe {
+    border: 1px solid #dddddd;
+    border-radius: 0.5em;
+    padding: 1.5em;
+    background-color: #fefefe;
+    margin-bottom: 2em;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1em;
+}
+
+.form-group input[type="text"] {
+    padding: 0.5em;
+    border: 1px solid #cccccc;
+    border-radius: 0.3em;
+}
+
+fieldset {
+    border: 1px solid #dddddd;
+    border-radius: 0.5em;
+    padding: 1em;
+    margin-bottom: 1em;
+}
+
+.form-morpions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.5em;
+    max-height: 260px;
+    overflow-y: auto;
+}
+
+.form-morpions label {
+    display: flex;
+    flex-direction: column;
+    border: 1px dashed #cccccc;
+    border-radius: 0.4em;
+    padding: 0.4em;
+    background-color: #fafafa;
+}
+
+.morpion-thumb {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 0.4em;
+    align-self: center;
+    margin: 0.3em 0;
+}
+
+.morpion-name {
+    font-weight: bold;
+}
+
+.btn-primary,
+.btn-danger {
+    border: none;
+    padding: 0.6em 1.2em;
+    border-radius: 0.4em;
+    cursor: pointer;
+    color: #ffffff;
+}
+
+.btn-primary {
+    background-color: #3478f7;
+}
+
+.btn-primary:hover {
+    background-color: #245ac1;
+}
+
+.btn-danger {
+    background-color: #d64545;
+}
+
+.btn-danger:hover {
+    background-color: #a53030;
+}
+
+.team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1em;
+}
+
+.team-card {
+    border: 1px solid #dddddd;
+    border-radius: 0.5em;
+    padding: 1em;
+    background-color: #f9f9f9;
+}
+
+.team-card header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+
+.team-meta {
+    font-size: 0.9em;
+    color: #555555;
+}
+
+.form-inline {
+    margin-top: 0.5em;
+}
+
+.team-morpions {
+    padding-left: 1.2em;
+    margin-top: 0.5em;
+}
+
+main {
+	flex : 10;
+    background-color: #FFFFFF;
+    padding-left: 3em;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 0.5em;
+}
+
+th, td {
+    border: 1px solid #dddddd;
+    padding: 0.5em;
+    text-align: left;
+}
+
+.table-wrapper {
+    margin-bottom: 1.5em;
+    overflow-x: auto;
+}
+
+.card-equipe {
+    border: 1px solid #dddddd;
+    border-radius: 0.5em;
+    padding: 1em;
+    margin-bottom: 1em;
+    background-color: #f9f9f9;
+}
+
+.card-equipe header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5em;
+}
+
+footer {
+	display: flex;
+	justify-content: space-around;
+    background-color: #669933;
+    border-radius: 1em;
+}
+
+.fond-jaune {
+	background-color: yellow;
+}
+
+.alert-error {
+    padding: 0.75rem 1.25rem;
+    margin: 1.5rem 0rem;
+    border: 2px solid transparent;
+    border-radius: 0.25rem;
+    color: rgb(0, 0, 0);
+    background-color: #ff00003d;
+    border-color: #ff0000;
+}
+
+.alert-success {
+    padding: 0.75rem 1.25rem;
+    margin: 1.5rem 0rem;
+    border: 2px solid transparent;
+    border-radius: 0.25rem;
+    color: rgb(0, 0, 0);
+    background-color: #48ff004e;
+    border-color: #00ff00;
+}
+
+.alert-warning {
+    padding: 0.75rem 1.25rem;
+    margin: 1.5rem 0rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+    color: rgb(0, 0, 0);
+    background-color: #ffda07c8;
+    border-color: #ffb300;
+}

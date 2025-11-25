@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h2>Recherche dans la base</h2>
+
+<form method="post">
+	<label for="id_table">Rechercher dans</label>
+	<select name="nom_table" id="id_table">
+		<option value="series">Séries</option>
+		<option value="actrices">Actrices</option>
+	</select>
+	<label for="id_valeur">la valeur </label>
+	<input type="text" name="valeur" id="id_valeur" placeholder="abc" required />
+	<br/><br/>
+	<input type="submit" name="bouton_valider" value="Rechercher"/>
+</form>
+
+{% include 'message.html' %}
+
+{% if POST and POST.bouton_valider and REQUEST_VARS.result %}
+	<ul>
+		{% for instance in REQUEST_VARS.result  %}
+			<li>
+				{% for value in instance %}
+					{{ value }} 
+				{% endfor %}
+			</li>
+		{% endfor %}
+	</ul>	
+{% endif %}
+
+{% endblock %}

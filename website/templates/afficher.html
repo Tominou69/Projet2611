@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<h2>Morpions disponibles</h2>
+{% if REQUEST_VARS['morpions'] %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Vie</th>
+                <th>Attaque</th>
+                <th>Mana</th>
+                <th>Réussite</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for morpion in REQUEST_VARS['morpions'] %}
+            <tr>
+                <td>{{ morpion.nom }}</td>
+                <td>{{ morpion.vie }}</td>
+                <td>{{ morpion.attaque }}</td>
+                <td>{{ morpion.mana }}</td>
+                <td>{{ morpion.reussite }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="alert-warning">Aucun morpion n'est enregistré pour l'instant.</p>
+{% endif %}
+
+<h2>Équipes</h2>
+{% if REQUEST_VARS['equipes'] %}
+    {% for equipe in REQUEST_VARS['equipes'] %}
+    <article class="card-equipe">
+        <header>
+            <h3>{{ equipe.nom }}</h3>
+        </header>
+        {% if equipe.morpions %}
+        <ul>
+            {% for morpion in equipe.morpions %}
+            <li>
+                #{{ morpion.ordre }} · {{ morpion.nom }} — 
+                {{ morpion.vie }} PV / {{ morpion.attaque }} ATK / {{ morpion.mana }} MANA / {{ morpion.reussite }} %
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+            <p class="alert-warning">Aucun morpion assigné pour le moment.</p>
+        {% endif %}
+    </article>
+    {% endfor %}
+{% else %}
+    <p class="alert-warning">Aucune équipe enregistrée.</p>
+{% endif %}
+
+<h2>Configurations disponibles</h2>
+{% if REQUEST_VARS['configurations'] %}
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th>Grille</th>
+                <th>Tours max</th>
+                <th>Somme caractéristiques</th>
+                <th>Date de création</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for config in REQUEST_VARS['configurations'] %}
+            <tr>
+                <td>{{ config.taille_grille }} x {{ config.taille_grille }}</td>
+                <td>{{ config.nb_max_tours }}</td>
+                <td>{{ config.somme_caracteristiques }}</td>
+                <td>{{ config.date_creation }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<p class="alert-warning">Aucune configuration n'a encore été créée.</p>
+{% endif %}
+
+<h2>Dernières parties</h2>
+{% if REQUEST_VARS['parties'] %}
+<ul>
+    {% for partie in REQUEST_VARS['parties'] %}
+    <li>
+        <strong>Partie #{{ partie.id }}</strong> — {{ partie.equipe1 }} vs {{ partie.equipe2 }}
+        <br>
+        {% if partie.date_fin %}
+            Gagnante : {{ partie.gagnante or 'Match nul' }} · terminée le {{ partie.date_fin }}
+        {% else %}
+            Partie en cours (tour {{ partie.tour }})
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="alert-warning">Aucune partie enregistrée.</p>
+{% endif %}
+
+<h2>Journal des actions (5 plus récentes)</h2>
+{% if REQUEST_VARS['journal_recent'] %}
+<ol>
+    {% for ligne in REQUEST_VARS['journal_recent'] %}
+    <li>
+        [Partie #{{ ligne.id_partie }} · ligne {{ ligne.numero }}]
+        {{ ligne.texte }} ({{ ligne.date_action }})
+    </li>
+    {% endfor %}
+</ol>
+{% else %}
+<p class="alert-warning">Aucune action enregistrée dans le journal.</p>
+{% endif %}
+
+{% endblock %}
