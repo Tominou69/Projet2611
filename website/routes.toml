@@ -13,3 +13,8 @@ url = "equipes"
 controleur = "controleurs/equipes.py"
 template = "templates/equipes.html"
 
+[[routes]]
+url = "parties"
+controleur = "controleurs/parties.py"
+template = "templates/parties.html"
+

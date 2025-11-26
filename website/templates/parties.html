@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block main_content %}
+<section>
+    <h2>Créer une partie normale</h2>
+    <p>Sélectionnez deux équipes différentes, la taille de la grille (3x3 ou 4x4) et le nombre maximal de tours.</p>
+    {% include 'message.html' %}
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="creer">
+        <div class="form-group">
+            <label for="equipe1">Équipe 1</label>
+            <select name="equipe1" id="equipe1" required>
+                <option value="">-- choisissez --</option>
+                {% for eq in REQUEST_VARS['equipes_disponibles'] %}
+                <option value="{{ eq.id }}">{{ eq.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="equipe2">Équipe 2</label>
+            <select name="equipe2" id="equipe2" required>
+                <option value="">-- choisissez --</option>
+                {% for eq in REQUEST_VARS['equipes_disponibles'] %}
+                <option value="{{ eq.id }}">{{ eq.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="taille">Taille de la grille</label>
+            <select name="taille" id="taille">
+                <option value="3">3 x 3</option>
+                <option value="4">4 x 4</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="max_tours">Nombre maximal de tours</label>
+            <input type="number" name="max_tours" id="max_tours" min="3" max="20" value="9">
+        </div>
+        <button type="submit" class="btn-primary">Démarrer la partie</button>
+    </form>
+</section>
+
+{% if REQUEST_VARS.get('partie_courante') %}
+{% set etat = REQUEST_VARS['partie_courante'] %}
+<section>
+    <h2>Partie en cours</h2>
+    <p>
+        Partie #{{ REQUEST_VARS['partie_courante_id'] }} -
+        Tour actuel : {{ etat.tour_actuel }} /
+        maximum {{ etat.max_tours }}.
+    </p>
+    <p>
+        Joueuse actuelle :
+        <strong>{{ etat.equipes[etat.joueur_courant].nom }}</strong>
+    </p>
+    {% if etat.terminee %}
+    <p class="alert-success">{{ etat.message }}</p>
+    {% endif %}
+
+    <div class="plateau">
+        {% for ligne in range(etat.taille) %}
+        <div class="plateau-row">
+            {% for col in range(etat.taille) %}
+            {% set case = etat.plateau[ligne][col] %}
+            <div class="cellule">
+                {% if case %}
+                    <span class="badge-couleur">{{ case.morpion_nom }}</span>
+                {% else %}
+                    .
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if not etat.terminee %}
+    <h3>Jouer un coup</h3>
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="jouer">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_courante_id'] }}">
+        <div class="form-group">
+            <label for="morpion_id">Choisissez un morpion de {{ etat.equipes[etat.joueur_courant].nom }}</label>
+            <select name="morpion_id" id="morpion_id">
+                {% for m in etat.equipes[etat.joueur_courant].morpions %}
+                <option value="{{ m.id }}">{{ m.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="case">Case (ligne, colonne)</label>
+            <select name="case" id="case">
+                {% for ligne in range(etat.taille) %}
+                    {% for col in range(etat.taille) %}
+                        {% if not etat.plateau[ligne][col] %}
+                        <option value="{{ ligne }},{{ col }}">L{{ ligne + 1 }} - C{{ col + 1 }}</option>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-primary">Valider le coup</button>
+    </form>
+    {% else %}
+    <form method="post" class="form-inline">
+        <input type="hidden" name="action" value="abandonner">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_courante_id'] }}">
+        <button type="submit" class="btn-danger">Retirer la partie</button>
+    </form>
+    {% endif %}
+</section>
+{% endif %}
+
+{% endblock %}
+

@@ -232,6 +232,26 @@ fieldset {
     margin-top: 0.5em;
 }
 
+.plateau {
+    display: inline-block;
+    margin: 1em 0;
+    border: 2px solid #444;
+}
+
+.plateau-row {
+    display: flex;
+}
+
+.cellule {
+    width: 60px;
+    height: 60px;
+    border: 1px solid #999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
 main {
 	flex : 10;
     background-color: #FFFFFF;
