@@ -1,3 +1,6 @@
+
+""" c le controleur qui liste en detail morpions, equipes, config et partie recents """
+
 from collections import defaultdict  # import pour créer des listes par clé
 
 from model.model_pg import execute_select_query  # fonction  pour lancer un SELECT
@@ -8,9 +11,6 @@ add_activity(SESSION['HISTORIQUE'], "consultation des données principales")  # 
 connexion = SESSION['CONNEXION']  # on récupère la connexion à la BD stockée dans la session
 
 
-def fetch_rows(query, params=None):  # fct pr exct un SELECT
-    rows = execute_select_query(connexion, query, params or [])  # on lance la requête
-    return rows if rows is not None else []  
 
 
 
@@ -33,7 +33,7 @@ morpions_cols = (  # noms des colonnes qu'on va associer aux résultats
     "date_creation",
 )
 REQUEST_VARS["morpions"] = [  # pr stocke la liste de morpions pour le template
-    dict(zip(morpions_cols, row)) for row in fetch_rows(morpions_query)  # zip c pr associer les noms aux vl genre 43 = chloe 
+    dict(zip(morpions_cols, row)) for row in execute_select_query(connexion, morpions_query, []) or []
 ]
 
 
@@ -59,7 +59,7 @@ membres_query = """  # requête pour récupérer la composition des équipes (jo
 # row c une ligne de la requete 
 # mtn on prepare la composition d equipe 
 members_map = defaultdict(list)  # dcq id equipe est initialiser a vide
-for row in fetch_rows(membres_query):  # pr av la ligne de mrèequipe av les infos du mrp 
+for row in (execute_select_query(connexion, membres_query, []) or []):  # pr av la ligne de mrèequipe av les infos du mrp 
     members_map[row[0]].append(
         {
             "nom": row[1],  # nom du morpion
@@ -72,7 +72,7 @@ for row in fetch_rows(membres_query):  # pr av la ligne de mrèequipe av les inf
     )
 
 REQUEST_VARS["equipes"] = []  # ce truc sera envoyé dans le template 
-for row in fetch_rows(equipes_query):  # on parcourt toutes les équipes
+for row in (execute_select_query(connexion, equipes_query, []) or []):  # on parcourt toutes les équipes
     equipe = {
         "id": row[0],  
         "nom": row[1],  
@@ -81,6 +81,7 @@ for row in fetch_rows(equipes_query):  # on parcourt toutes les équipes
         "morpions": members_map.get(row[0], []),  
     }
     REQUEST_VARS["equipes"].append(equipe)  # on ajoute l'équipe préparée
+    # append c pr ajouter un element a la liste 
 
 
 # Configurations
@@ -98,7 +99,7 @@ config_cols = (  # noms des colonnes pour zip
     "date_creation",
 )
 REQUEST_VARS["configurations"] = [  # la liste de configurations affichées dans le template
-    dict(zip(config_cols, row)) for row in fetch_rows(config_query)  # row c pr associe chaque nom de colone a la valeur ds row
+    dict(zip(config_cols, row)) for row in (execute_select_query(connexion, config_query, []) or [])
 ] # dict c pr faire que l asso soit pythonable 
 
 
@@ -120,7 +121,7 @@ parties_query = """  # requête qui sélectionne les 5 parties les plus récente
     ORDER BY p.date_debut DESC
     LIMIT 5
 """
-partie_cols = (  # noms des colonnes utilisés pour zip
+partie_cols = (  # noms des colonnes utilisés pour le truc d apres 
     "id",
     "equipe1",
     "equipe2",
@@ -130,7 +131,10 @@ partie_cols = (  # noms des colonnes utilisés pour zip
     "tour",
 )
 REQUEST_VARS["parties"] = [  # liste des parties affichées
-    dict(zip(partie_cols, row)) for row in fetch_rows(parties_query)  # zip colonnes/valeurs
+    dict(zip(partie_cols, row)) for row in (execute_select_query(connexion, parties_query, []) or [])
+    # zip ... c pr associer chaque nom de colonne a la valeur ds row (la ligne) 
+    # dict transforme cela en un dico python du style "id partie = 1, "date = ..." " .. 
+
 ]
 
 
@@ -143,5 +147,5 @@ journal_query = """  # requête qui récupère les 5 dernières entrées du jour
 """
 journal_cols = ("id_partie", "numero", "date_action", "texte")  # noms des colonnes
 REQUEST_VARS["journal_recent"] = [  # liste des lignes de journal récentes pr le template 
-    dict(zip(journal_cols, row)) for row in fetch_rows(journal_query)  # zip colonnes/valeurs
+    dict(zip(journal_cols, row)) for row in (execute_select_query(connexion, journal_query, []) or [])  # zip colonnes/valeurs
 ]

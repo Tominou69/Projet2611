@@ -5,7 +5,9 @@
     <h2>Gestion des équipes</h2>
     <p>
         Sélectionnez entre {{ REQUEST_VARS['morpions_min'] }} et {{ REQUEST_VARS['morpions_max'] }} morpions
-        parmi les {{ REQUEST_VARS['morpions_total'] }} modèles disponibles pour créer une nouvelle équipe.
+        parmi les {{ REQUEST_VARS['morpions_total'] }} modèles disponibles pour créer une nouvelle équipe. 
+        <br>
+        Ne choissisez pas un meme morpion dans les deux équipes, on est pas sur Fifa Ultimate team ici. 
     </p>
     {% include 'message.html' %}
     <form method="post" class="form-equipe">
@@ -13,6 +15,12 @@
         <div class="form-group">
             <label for="nom">Nom de l'équipe</label>
             <input type="text" id="nom" name="nom" value="{{ REQUEST_VARS['form_values'].nom }}" required>
+        </div>
+        <div class="form-group">
+            <label for="couleur">Couleur de l'équipe </label>
+            <input type="text" id="couleur" name="couleur" placeholder="#FF6600"
+                value="{{ REQUEST_VARS['form_values'].couleur }}">
+            <small>ATTENTION : saisis un code hexadécimal (#FF6600) pour différencier les équipes sur les plateaux.</small>
         </div>
         <fieldset class="form-group">
             <legend>Choisir les morpions ({{ REQUEST_VARS['morpions_min'] }} à {{ REQUEST_VARS['morpions_max'] }})</legend>
@@ -40,10 +48,15 @@
         <article class="team-card">
             <header>
                 <h3>{{ equipe.nom }}</h3>
+                {% if equipe.couleur %}
+                <span class="badge-couleur" style="background-color: {{ equipe.couleur | default('#222222') }};">{{ equipe.couleur | default('#222222') }}</span>
+                {% else %}
+                <span class="badge-couleur">aucune couleur</span>
+                {% endif %}
             </header>
-            <p class="team-meta">
-                Créée le {{ equipe.date_creation }} — {{ equipe.morpions|length }} morpion{% if equipe.morpions|length > 1 %}s{% endif %}
-            </p>
+           
+           
+
             {% if equipe.morpions %}
             <ol class="team-morpions">
                 {% for morpion in equipe.morpions %}

@@ -1,40 +1,30 @@
-"""
-Contrôleur pour la fonctionnalité "partie normale".
-Le but est d'avoir un code simple et commenté, adapté à un niveau L2.
-"""
-
-from copy import deepcopy  # pour cloner facilement la grille
-from datetime import datetime
-
-from controleurs.includes import add_activity
-from model.model_pg import execute_select_query
-
-add_activity(SESSION["HISTORIQUE"], "ouverture de la page partie normale")
-
-connexion = SESSION["CONNEXION"]  # connexion PostgreSQL fournie par le serveur
-
-# petit raccourci pour les états de partie conservés en session
-PARTIES_STATE = SESSION.setdefault("PARTIES_STATE", dict())
 
 
-def executer_select(query, params=None):
-    """Enveloppe simple pour récupérer une liste depuis la base."""
-    rows = execute_select_query(connexion, query, params or [])
-    return rows if rows else []
+from copy import deepcopy   
+from datetime import datetime  
+
+from controleurs.includes import add_activity  
+from model.model_pg import execute_select_query   
+
+add_activity(SESSION["HISTORIQUE"], "ouverture de la page partie normale")  
+
+connexion = SESSION["CONNEXION"]   
+PARTIES_STATE = SESSION.setdefault("PARTIES_STATE", dict())  # dictionnaire conservé entre les requêtes
 
 
 def charger_equipes():
-    """Retourne la liste de toutes les équipes avec leur identifiant et leur nom."""
-    rows = executer_select("SELECT id_equipe, nom FROM equipe ORDER BY nom")
-    equipes = []
-    for row in rows:
-        equipes.append({"id": row[0], "nom": row[1]})
+     
+    rows = execute_select_query(connexion, "SELECT id_equipe, nom, couleur FROM equipe ORDER BY nom", []) or []
+    equipes = []  # liste finale
+    for row in rows:  # chaque row = (id, nom)
+        equipes.append({"id": row[0], "nom": row[1], "couleur": row[2]})  # on convertit en dictionnaire lisible
     return equipes
 
 
 def charger_morpions_equipe(equipe_id):
-    """Récupère les morpions associés à une équipe donnée."""
-    rows = executer_select(
+     
+    rows = execute_select_query(
+        connexion,
         """
         SELECT m.id_morpion, m.nom
         FROM morpion m
@@ -43,33 +33,38 @@ def charger_morpions_equipe(equipe_id):
         ORDER BY me.ordre_dans_equipe
         """,
         [equipe_id],
-    )
+    ) or []
     morpions = []
     for row in rows:
-        morpions.append({"id": row[0], "nom": row[1]})
+        morpions.append({"id": row[0], "nom": row[1]})  # même logique : conversion tuple -> dict
     return morpions
 
 
 def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
-    """Création de la configuration + de la partie en base, puis stockage en session."""
-    # récupération des informations des équipes
-    eq_rows = executer_select(
-        "SELECT id_equipe, nom FROM equipe WHERE id_equipe IN (%s, %s)",
+    """
+    Crée l'entrée de configuration + l'entrée de partie dans la base,
+    puis initialise l'état Python (plateau, messages, etc.).
+    """
+    eq_rows = execute_select_query(  # on vérifie que les deux équipes existent
+        connexion,
+        "SELECT id_equipe, nom, couleur FROM equipe WHERE id_equipe IN (%s, %s)",
         [equipe1_id, equipe2_id],
-    )
-    if len(eq_rows) != 2:
+    ) or []
+    if len(eq_rows) != 2:  # si l'une des deux équipes est introuvable
         return None, "Impossible de trouver les équipes sélectionnées."
 
-    equipe_infos = {row[0]: row[1] for row in eq_rows}
-    morpions_eq1 = charger_morpions_equipe(equipe1_id)
-    morpions_eq2 = charger_morpions_equipe(equipe2_id)
-    if len(morpions_eq1) < 1 or len(morpions_eq2) < 1:
+    equipe_infos = {
+        row[0]: {"nom": row[1], "couleur": row[2]}
+        for row in eq_rows
+    }  # dictionnaire rapide {id: infos}
+    morpions_eq1 = charger_morpions_equipe(equipe1_id)  # liste des morpions de l'équipe 1
+    morpions_eq2 = charger_morpions_equipe(equipe2_id)  # liste des morpions de l'équipe 2
+    if len(morpions_eq1) < 1 or len(morpions_eq2) < 1:  # une équipe vide n'a pas de sens
         return None, "Chaque équipe doit avoir au moins un morpion."
 
     try:
-        with connexion.cursor() as cursor:
-            # on crée une configuration dédiée, plus simple pour filtrer ensuite
-            cursor.execute(
+        with connexion.cursor() as cursor:  # toutes les écritures se font dans un curseur
+            cursor.execute(  # création de la configuration (taille + nb max de tours)
                 """
                 INSERT INTO configuration (taille_grille, nb_max_tours, somme_caracteristiques)
                 VALUES (%s, %s, %s)
@@ -77,10 +72,9 @@ def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
                 """,
                 (taille_grille, max_tours, 15),
             )
-            config_id = cursor.fetchone()[0]
+            config_id = cursor.fetchone()[0]  # on récupère l'identifiant généré
 
-            # on crée la partie
-            cursor.execute(
+            cursor.execute(  # création de la partie elle-même
                 """
                 INSERT INTO partie (id_equipe1, id_equipe2, id_configuration, date_debut, tour_actuel)
                 VALUES (%s, %s, %s, NOW(), 1)
@@ -88,22 +82,31 @@ def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
                 """,
                 (equipe1_id, equipe2_id, config_id),
             )
-            partie_id = cursor.fetchone()[0]
-    except Exception as exc:
+            partie_id = cursor.fetchone()[0]  # on garde l'id pour la suite
+    except Exception as exc:  # en cas d'erreur SQL, on renvoie le message
         return None, f"Erreur lors de la création de la partie : {exc}"
 
-    # on prépare un plateau vide (liste de listes remplie de None)
-    plateau = [[None for _ in range(taille_grille)] for _ in range(taille_grille)]
-    PARTIES_STATE[partie_id] = {
+    plateau = [[None for _ in range(taille_grille)] for _ in range(taille_grille)]  # grille vide
+    PARTIES_STATE[partie_id] = {  # on stocke l'état initial dans la session
         "taille": taille_grille,
         "max_tours": max_tours,
         "tour_actuel": 1,
         "cases_jouees": 0,
-        "joueur_courant": 1,  # 1 pour équipe 1, 2 pour équipe 2
+        "joueur_courant": 1,  # 1 = équipe 1 joue en premier
         "plateau": plateau,
         "equipes": {
-            1: {"id": equipe1_id, "nom": equipe_infos[equipe1_id], "morpions": morpions_eq1},
-            2: {"id": equipe2_id, "nom": equipe_infos[equipe2_id], "morpions": morpions_eq2},
+            1: {
+                "id": equipe1_id,
+                "nom": equipe_infos[equipe1_id]["nom"],
+                "couleur": equipe_infos[equipe1_id]["couleur"],
+                "morpions": morpions_eq1,
+            },
+            2: {
+                "id": equipe2_id,
+                "nom": equipe_infos[equipe2_id]["nom"],
+                "couleur": equipe_infos[equipe2_id]["couleur"],
+                "morpions": morpions_eq2,
+            },
         },
         "terminee": False,
         "message": None,
@@ -112,90 +115,79 @@ def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
 
 
 def verifier_victoire(plateau, joueur):
-    """Retourne True si le joueur a une ligne/colonne/diagonale complète."""
+    """Teste lignes, colonnes et diagonales pour savoir si un joueur a gagné."""
     taille = len(plateau)
-
-    # lignes
-    for ligne in plateau:
+    for ligne in plateau:  # test des lignes
         if all(cell and cell["joueur"] == joueur for cell in ligne):
             return True
-    # colonnes
-    for col in range(taille):
+    for col in range(taille):  # test des colonnes
         if all(plateau[row][col] and plateau[row][col]["joueur"] == joueur for row in range(taille)):
             return True
-    # diagonales
-    if all(plateau[i][i] and plateau[i][i]["joueur"] == joueur for i in range(taille)):
+    if all(plateau[i][i] and plateau[i][i]["joueur"] == joueur for i in range(taille)):  # diagonale principale
         return True
     if all(plateau[i][taille - 1 - i] and plateau[i][taille - 1 - i]["joueur"] == joueur for i in range(taille)):
-        return True
-    return False
+        return True  # diagonale secondaire
+    return False  # aucune victoire détectée
 
 
 def inserer_journal(partie_id, texte):
-    """Ajoute une entrée dans la table journal pour tracer le coup."""
+    """Ajoute une ligne dans la table journal (on ignore les erreurs pour ne pas bloquer)."""
     try:
         with connexion.cursor() as cursor:
             cursor.execute(
-                """
-                INSERT INTO journal (id_partie, texte_action)
-                VALUES (%s, %s)
-                """,
+                "INSERT INTO journal (id_partie, texte_action) VALUES (%s, %s)",
                 (partie_id, texte),
             )
     except Exception:
-        pass  # en cas d'erreur, on ignore pour ne pas bloquer la partie
+        pass  # erreur silencieuse : la partie peut continuer même si l'écriture échoue
 
 
 def jouer_un_coup(partie_id, morpion_id, ligne, colonne):
-    """Gère un coup : place un morpion si la case est vide et vérifie l'état."""
+    """Place un morpion sur la grille si la case est libre et met à jour l'état."""
     if partie_id not in PARTIES_STATE:
         return "Partie introuvable."
-    etat = PARTIES_STATE[partie_id]
+    etat = PARTIES_STATE[partie_id]  # raccourci
     if etat.get("terminee"):
         return "Cette partie est déjà terminée."
 
     taille = etat["taille"]
-    if not (0 <= ligne < taille and 0 <= colonne < taille):
+    if not (0 <= ligne < taille and 0 <= colonne < taille):  # case en dehors du plateau
         return "Case invalide."
-    if etat["plateau"][ligne][colonne] is not None:
+    if etat["plateau"][ligne][colonne] is not None:  # case déjà occupée
         return "Cette case est déjà occupée."
 
     joueur = etat["joueur_courant"]
     equipe = etat["equipes"][joueur]
-    # on vérifie que le morpion choisi appartient bien à l'équipe du joueur courant
     morpion_trouve = None
-    for m in equipe["morpions"]:
+    for m in equipe["morpions"]:  # on cherche le morpion choisi dans la liste autorisée
         if m["id"] == morpion_id:
             morpion_trouve = m
             break
     if morpion_trouve is None:
         return "Ce morpion n'appartient pas à votre équipe."
 
-    # on place la valeur dans le plateau
-    etat["plateau"][ligne][colonne] = {
+    etat["plateau"][ligne][colonne] = {  # on place concrètement le morpion
         "joueur": joueur,
         "morpion_id": morpion_id,
         "morpion_nom": morpion_trouve["nom"],
+        "couleur": etat["equipes"][joueur].get("couleur") or "#111111",
     }
-    etat["cases_jouees"] += 1
-    etat["tour_actuel"] += 1
+    etat["cases_jouees"] += 1  # on compte les coups
+    etat["tour_actuel"] += 1  # on passe au tour suivant (même si la partie se termine ensuite)
 
-    # on insère une ligne dans le journal
     texte = f"{equipe['nom']} place {morpion_trouve['nom']} en ({ligne + 1},{colonne + 1})."
-    inserer_journal(partie_id, texte)
+    inserer_journal(partie_id, texte)  # historique persistant
 
-    # on met à jour tour_actuel en base
     try:
         with connexion.cursor() as cursor:
-            cursor.execute(
+            cursor.execute(  # on garde tour_actuel synchro dans la table partie
                 "UPDATE partie SET tour_actuel = %s WHERE id_partie = %s",
                 (etat["tour_actuel"], partie_id),
             )
     except Exception:
-        pass
+        pass  # si l'UPDATE échoue, on n'empêche pas la partie de continuer
 
-    # vérification des conditions d'arrêt
-    if verifier_victoire(etat["plateau"], joueur):
+    if verifier_victoire(etat["plateau"], joueur):  # victoire détectée
         etat["terminee"] = True
         etat["message"] = f"Victoire de {equipe['nom']} !"
         try:
@@ -211,34 +203,28 @@ def jouer_un_coup(partie_id, morpion_id, ligne, colonne):
         except Exception:
             pass
     elif etat["cases_jouees"] >= etat["max_tours"] or etat["cases_jouees"] >= etat["taille"] ** 2:
+        # soit la limite de tours est atteinte, soit la grille est pleine
         etat["terminee"] = True
         etat["message"] = "La partie est terminée (grille pleine ou tours max atteints)."
         try:
             with connexion.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE partie SET date_fin = NOW() WHERE id_partie = %s",
-                    (partie_id,),
-                )
+                cursor.execute("UPDATE partie SET date_fin = NOW() WHERE id_partie = %s", (partie_id,))
         except Exception:
             pass
     else:
-        # on passe la main à l'autre joueur
-        etat["joueur_courant"] = 2 if joueur == 1 else 1
-        etat["message"] = "Coup enregistré. À l'autre joueuse !"
+        etat["joueur_courant"] = 2 if joueur == 1 else 1  # on alterne l'équipe active
+        etat["message"] = "Coup enregistré. À l'autre joueuse !"  # petit feedback utilisateur
 
-    return None  # pas d'erreur
+    return None  # retourner None signifie “pas d’erreur bloquante”
 
 
-# ---------------------------------------------------------------------------
-# Gestion des requêtes
-# ---------------------------------------------------------------------------
-if POST and "action" in POST:
-    action = POST["action"][0]
+if POST and "action" in POST:  # on traite les formulaires envoyés depuis parties.html
+    action = POST["action"][0]  # valeur de l'input hidden “action”
     if action == "creer":
-        equipe1 = int(POST.get("equipe1", ["0"])[0])
+        equipe1 = int(POST.get("equipe1", ["0"])[0])  # identifiants des équipes
         equipe2 = int(POST.get("equipe2", ["0"])[0])
-        taille = int(POST.get("taille", ["3"])[0])
-        max_tours = int(POST.get("max_tours", ["9"])[0])
+        taille = int(POST.get("taille", ["3"])[0])  # taille du plateau (3 ou 4)
+        max_tours = int(POST.get("max_tours", ["9"])[0])  # limite choisie par l'utilisateur
 
         if equipe1 == equipe2:
             REQUEST_VARS["message"] = "Choisissez deux équipes différentes."
@@ -260,11 +246,11 @@ if POST and "action" in POST:
     elif action == "jouer":
         partie_id = int(POST.get("partie_id", ["0"])[0])
         morpion_id = int(POST.get("morpion_id", ["0"])[0])
-        case = POST.get("case", ["0,0"])[0]
+        case = POST.get("case", ["0,0"])[0]  # la case est envoyée sous la forme "ligne,colonne"
         try:
             ligne, colonne = map(int, case.split(","))
         except ValueError:
-            ligne = colonne = -1
+            ligne = colonne = -1  # valeurs impossibles déclenchant une erreur plus bas
         erreur = jouer_un_coup(partie_id, morpion_id, ligne, colonne)
         if erreur:
             REQUEST_VARS["message"] = erreur
@@ -280,18 +266,16 @@ if POST and "action" in POST:
     elif action == "abandonner":
         partie_id = int(POST.get("partie_id", ["0"])[0])
         if partie_id in PARTIES_STATE:
-            del PARTIES_STATE[partie_id]
+            del PARTIES_STATE[partie_id]  # on supprime simplement l'entrée en session
         REQUEST_VARS["message"] = "La partie a été retirée de votre session."
         REQUEST_VARS["message_class"] = "alert-warning"
 
-
-# données communes nécessaires au template
+# données nécessaires au template dans tous les cas
 REQUEST_VARS["equipes_disponibles"] = charger_equipes()
 
-# on passe aussi l'état courant (s'il existe) pour afficher le plateau
+# si on recharge la page alors qu'une partie existe encore en session, on la ré-affiche
 if REQUEST_VARS.get("partie_courante") is None and PARTIES_STATE:
-    # on récupère la première partie en cours (dans ce projet on n'en gère qu'une à la fois)
-    pid, state = next(iter(PARTIES_STATE.items()))
+    pid, state = next(iter(PARTIES_STATE.items()))  # on prend la première partie en cours
     REQUEST_VARS["partie_courante_id"] = pid
     REQUEST_VARS["partie_courante"] = state
 

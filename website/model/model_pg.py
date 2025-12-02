@@ -89,4 +89,94 @@ def get_table_like(connexion, nom_table, like_pattern):
     return execute_select_query(connexion, query, [motif])
 
 
+def get_table_counts(connexion, mappings):
+    """
+    Retourne une liste de dictionnaires {"label": ..., "value": ...}
+    pour chaque table listée dans mappings (liste de tuples (label, nom_table)).
+    """
+    resultat = []
+    for label, table in mappings:
+        rows = count_instances(connexion, table) or []
+        valeur = rows[0][0] if rows else 0
+        resultat.append({"label": label, "value": valeur})
+    return resultat
+
+
+def get_top_equipes(connexion, limite=3):
+    """
+    Renvoie les équipes ordonnées par nombre de victoires (limitées à `limite`).
+    Chaque élément est un dict {nom, couleur, victoires}.
+    """
+    query = """
+        SELECT e.nom,
+               e.couleur,
+               COUNT(p.id_partie) AS victoires
+        FROM equipe e
+        LEFT JOIN partie p ON p.id_equipe_gagnante = e.id_equipe
+        GROUP BY e.id_equipe, e.nom, e.couleur
+        ORDER BY victoires DESC, e.nom ASC
+        LIMIT %s
+    """
+    rows = execute_select_query(connexion, query, [limite]) or []
+    return [{"nom": row[0], "couleur": row[1], "victoires": row[2]} for row in rows]
+
+
+def get_partie_par_duree(connexion, ordre="ASC"):
+    """
+    Renvoie la partie terminée la plus courte (ordre="ASC") ou la plus longue (ordre="DESC").
+    Retourne None si aucune partie terminée n'existe.
+    """
+    ordre = ordre.upper()
+    if ordre not in ("ASC", "DESC"):
+        ordre = "ASC"
+    query = f"""
+        SELECT p.id_partie,
+               e1.nom AS equipe1,
+               e2.nom AS equipe2,
+               EXTRACT(EPOCH FROM (p.date_fin - p.date_debut))::INTEGER AS duree_sec,
+               p.date_fin
+        FROM partie p
+        JOIN equipe e1 ON e1.id_equipe = p.id_equipe1
+        JOIN equipe e2 ON e2.id_equipe = p.id_equipe2
+        WHERE p.date_fin IS NOT NULL
+        ORDER BY duree_sec {ordre}
+        LIMIT 1
+    """
+    rows = execute_select_query(connexion, query, []) or []
+    if not rows:
+        return None
+    row = rows[0]
+    return {
+        "id": row[0],
+        "equipe1": row[1],
+        "equipe2": row[2],
+        "duree_sec": row[3],
+        "date_fin": row[4],
+    }
+
+
+def get_journal_stats(connexion):
+    """
+    Renvoie les statistiques issues de la vue v_journal_par_mois déjà formatées pour le template.
+    """
+    query = """
+        SELECT annee, mois, nb_lignes_total, nb_parties, nb_moyen_lignes
+        FROM v_journal_par_mois
+        ORDER BY annee DESC, mois DESC
+    """
+    rows = execute_select_query(connexion, query, []) or []
+    stats = []
+    for row in rows:
+        stats.append(
+            {
+                "annee": int(row[0]),
+                "mois": int(row[1]),
+                "nb_lignes": int(row[2]),
+                "nb_parties": int(row[3]),
+                "nb_moyen": round(float(row[4]), 2),
+            }
+        )
+    return stats
+
+
 

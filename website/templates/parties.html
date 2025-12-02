@@ -12,7 +12,10 @@
             <select name="equipe1" id="equipe1" required>
                 <option value="">-- choisissez --</option>
                 {% for eq in REQUEST_VARS['equipes_disponibles'] %}
-                <option value="{{ eq.id }}">{{ eq.nom }}</option>
+                <option value="{{ eq.id }}">
+                    {{ eq.nom }}
+                    {% if eq.couleur %}({{ eq.couleur }}){% endif %}
+                </option>
                 {% endfor %}
             </select>
         </div>
@@ -21,7 +24,10 @@
             <select name="equipe2" id="equipe2" required>
                 <option value="">-- choisissez --</option>
                 {% for eq in REQUEST_VARS['equipes_disponibles'] %}
-                <option value="{{ eq.id }}">{{ eq.nom }}</option>
+                <option value="{{ eq.id }}">
+                    {{ eq.nom }}
+                    {% if eq.couleur %}({{ eq.couleur }}){% endif %}
+                </option>
                 {% endfor %}
             </select>
         </div>
@@ -64,7 +70,9 @@
             {% set case = etat.plateau[ligne][col] %}
             <div class="cellule">
                 {% if case %}
-                    <span class="badge-couleur">{{ case.morpion_nom }}</span>
+                <span class="badge-couleur" style="background-color: {{ case.couleur or '#111111' }}; border: 1px solid {{ case.couleur or '#111111' }}; color: #ffffff;">
+                    {{ case.morpion_nom }}
+                </span>
                 {% else %}
                     .
                 {% endif %}

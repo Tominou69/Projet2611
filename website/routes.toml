@@ -18,3 +18,13 @@ url = "parties"
 controleur = "controleurs/parties.py"
 template = "templates/parties.html"
 
+[[routes]]
+url = "partie-avancee"
+controleur = "controleurs/parties_avancees.py"
+template = "templates/parties_avancees.html"
+
+[[routes]]
+url = "historique"
+controleur = "controleurs/historique.py"
+template = "templates/historique.html"
+
