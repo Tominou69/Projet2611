@@ -126,7 +126,7 @@ def get_partie_par_duree(connexion, ordre="ASC"):
     Renvoie la partie terminée la plus courte (ordre="ASC") ou la plus longue (ordre="DESC").
     Retourne None si aucune partie terminée n'existe.
     """
-    ordre = ordre.upper()
+    ordre = ordre.upper() # uper pr transformer la chaine en majuscule
     if ordre not in ("ASC", "DESC"):
         ordre = "ASC"
     query = f"""
@@ -173,7 +173,7 @@ def get_journal_stats(connexion):
                 "mois": int(row[1]),
                 "nb_lignes": int(row[2]),
                 "nb_parties": int(row[3]),
-                "nb_moyen": round(float(row[4]), 2),
+                "nb_moyen": round(float(row[4]), 2), # round pr arrondir a deux decimal
             }
         )
     return stats

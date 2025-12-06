@@ -1,19 +1,15 @@
 {% extends "base.html" %}
 
 {% block main_content %}
-<section class="page-avancee">
-    <h2>Partie avancée </h2>
-    <p>
-        Sélectionnez deux équipes différentes, la taille de la grille (3x3 ou 4x4) et le nombre maximal de tours.
-
- <br>
-    </p>
+<section>
+    <h2>Créer une partie avancée</h2>
+    <p>On suit la même logique que la partie normale : choisir 2 équipes, la taille et la limite de tours.</p>
     {% include 'message.html' %}
     <form method="post" class="form-equipe">
         <input type="hidden" name="action" value="creer">
         <div class="form-group">
-            <label for="equipe1_av">Équipe 1</label>
-            <select name="equipe1" id="equipe1_av" required>
+            <label for="eq1_av">Équipe 1</label>
+            <select name="equipe1" id="eq1_av" required>
                 <option value="">-- choisissez --</option>
                 {% for eq in REQUEST_VARS['equipes_disponibles'] %}
                 <option value="{{ eq.id }}">{{ eq.nom }}</option>
@@ -21,8 +17,8 @@
             </select>
         </div>
         <div class="form-group">
-            <label for="equipe2_av">Équipe 2</label>
-            <select name="equipe2" id="equipe2_av" required>
+            <label for="eq2_av">Équipe 2</label>
+            <select name="equipe2" id="eq2_av" required>
                 <option value="">-- choisissez --</option>
                 {% for eq in REQUEST_VARS['equipes_disponibles'] %}
                 <option value="{{ eq.id }}">{{ eq.nom }}</option>
@@ -33,11 +29,11 @@
             <label for="taille_av">Taille de la grille</label>
             <select name="taille" id="taille_av">
                 <option value="3">3 x 3</option>
-                <option value="4" selected>4 x 4</option>
+                <option value="4">4 x 4</option>
             </select>
         </div>
         <div class="form-group">
-            <label for="max_tours_av">Nombre maximal d'actions</label>
+            <label for="max_tours_av">Nombre maximal de tours</label>
             <input type="number" name="max_tours" id="max_tours_av" min="6" max="30" value="12">
         </div>
         <button type="submit" class="btn-primary">Lancer la partie avancée</button>
@@ -46,29 +42,25 @@
 
 {% if REQUEST_VARS.get('partie_avancee') %}
 {% set etat = REQUEST_VARS['partie_avancee'] %}
-{% set opts = REQUEST_VARS.get('options_avancees', {'reserve': [], 'poses': [], 'cases_vides': [], 'cases_alliees': [], 'cases_adverses': []}) %}
 <section>
     <h2>Partie avancée en cours</h2>
     <p>
-        Partie #{{ REQUEST_VARS['partie_avancee_id'] }} -
-        Tour actuel : {{ etat.tour_actuel }} -
-        Actions prévues : {{ etat.actions }}/{{ etat.max_tours }}.
+        Partie #{{ REQUEST_VARS['partie_avancee_id'] }} –
+        Tour {{ etat.tour_actuel }} / {{ etat.max_tours }} –
+        Joueuse actuelle : <strong>{{ etat.equipes[etat.joueur_courant].nom }}</strong>
     </p>
-    <p>Joueuse actuelle : <strong>{{ etat.equipes[etat.joueur_courant].nom }}</strong></p>
     {% if etat.terminee %}
     <p class="alert-success">{{ etat.message }}</p>
     {% endif %}
 
     <div class="plateau">
-        {% for ligne in range(etat.taille) %}
+        {% for lig in range(etat.taille) %}
         <div class="plateau-row">
             {% for col in range(etat.taille) %}
-            {% set case = etat.plateau[ligne][col] %}
+            {% set case = etat.plateau[lig][col] %}
             <div class="cellule">
                 {% if case %}
-                <span class="badge-couleur" style="background-color: {{ case.couleur or '#111111' }}; border: 1px solid {{ case.couleur or '#111111' }}; color: #ffffff;">
-                    {{ case.morpion_nom }}
-                </span>
+                <span class="badge-couleur" data-color="{{ case.couleur|default('#111111') }}">{{ case.morpion_nom }}</span>
                 {% else %}
                 .
                 {% endif %}
@@ -78,118 +70,141 @@
         {% endfor %}
     </div>
 
-    <div class="team-grid">
-        {% for numero, equipe in etat.equipes.items() %}
-        <div class="team-card">
-            <header>
-                <h3>{{ equipe.nom }}</h3>
-                <span>Camp {{ numero }}</span>
-            </header>
-            <ul class="team-morpions">
-                {% for morpion in equipe.morpions %}
-                {% set infos = etat.caracteristiques[morpion.id] %}
-                <li>
-                    <strong>{{ infos.nom }}</strong> -
-                    PV : {{ infos.vie }}/{{ infos.vie_max }},
-                    Mana : {{ infos.mana_restante }}/{{ infos.mana }},
-                    État : {{ infos.etat }}
-                    {% if infos.position %} ({{ infos.position[0]+1 }},{{ infos.position[1]+1 }}){% endif %}
-                </li>
-                {% endfor %}
-            </ul>
-        </div>
-        {% endfor %}
-    </div>
-
     {% if not etat.terminee %}
-    <div class="zone-actions">
-        <article class="team-card">
-            <h3>Placer un morpion</h3>
-            {% if opts.reserve and opts.cases_vides %}
-            <form method="post" class="form-equipe">
-                <input type="hidden" name="action" value="placer">
-                <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
-                <div class="form-group">
-                    <label>Morpion en réserve</label>
-                    <select name="morpion_id">
-                        {% for m in opts.reserve %}
-                        <option value="{{ m.id }}">{{ m.nom }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Case libre</label>
-                    <select name="case_libre">
-                        {% for case in opts.cases_vides %}
-                        <option value="{{ case.value }}">{{ case.label }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary">Placer</button>
-            </form>
-            {% else %}
-            <p class="alert-warning">Plus de morpions en réserve ou plus de cases libres.</p>
-            {% endif %}
-        </article>
+    <h3>Jouer un coup </h3>
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="jouer">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
+        <div class="form-group">
+            <label>Choisissez un morpion de {{ etat.equipes[etat.joueur_courant].nom }}</label>
+            <select name="morpion_id">
+                {% for m in etat.equipes[etat.joueur_courant].morpions %}
+                <option value="{{ m.id }}">{{ m.nom }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Case (ligne, colonne)</label>
+            <select name="case">
+                {% for lig in range(etat.taille) %}
+                    {% for col in range(etat.taille) %}
+                        {% if not etat.plateau[lig][col] %}
+                        <option value="{{ lig }},{{ col }}">L{{ lig + 1 }} - C{{ col + 1 }}</option>
+                        {% endif %}
+                    {% endfor %}
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-primary">Valider le coup</button>
+    </form>
 
-        <article class="team-card">
-            <h3>Lancer un combat</h3>
-            {% if opts.poses and opts.cases_adverses %}
-            <form method="post" class="form-equipe">
-                <input type="hidden" name="action" value="combat">
-                <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
-                <div class="form-group">
-                    <label>Morpion attaquant (déjà posé)</label>
-                    <select name="morpion_id">
-                        {% for m in opts.poses %}
-                        <option value="{{ m.id }}">{{ m.nom }} ({{ m.position }})</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Case ennemie à viser</label>
-                    <select name="case_adverse">
-                        {% for case in opts.cases_adverses %}
-                        <option value="{{ case.value }}">{{ case.label }} - {{ case.nom }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary">Combattre</button>
-            </form>
-            {% else %}
-            <p class="alert-warning">Il faut avoir au moins un morpion posé et une cible adverse.</p>
-            {% endif %}
-        </article>
+    {% set opts = REQUEST_VARS['options_sort'] %}
 
-        <article class="team-card">
-            <h3>Sort de soin</h3>
-            {% if opts.poses and opts.cases_alliees %}
-            <form method="post" class="form-equipe">
-                <input type="hidden" name="action" value="sort">
-                <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
-                <div class="form-group">
-                    <label>Lanceur (doit être posé)</label>
-                    <select name="morpion_id">
-                        {% for m in opts.poses %}
-                        <option value="{{ m.id }}">{{ m.nom }} - Mana {{ m.mana }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Case alliée à soigner</label>
-                    <select name="case_alliee">
-                        {% for case in opts.cases_alliees %}
-                        <option value="{{ case.value }}">{{ case.label }} - {{ case.nom }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                <button type="submit" class="btn-primary">Lancer le sort</button>
-            </form>
-            {% else %}
-            <p class="alert-warning">Il faut au moins un allié sur la grille et un lanceur avec du mana.</p>
-            {% endif %}
-        </article>
-    </div>
+    <h3>Combat (rapproché)</h3>
+    {% if opts.lanceurs and opts.cibles %}
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="combat">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
+        <div class="form-group">
+            <label>Attaquant déjà posé</label>
+            <select name="attaquant_id">
+                {% for item in opts.lanceurs %}
+                <option value="{{ item.id }}">{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Cible adjacente</label>
+            <select name="case_adverse">
+                {% for item in opts.cibles %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn-primary">Lancer le combat</button>
+    </form>
+    {% else %}
+    <p class="alert-warning">Pour combattre, il faut un morpion allié posé et un adversaire voisin.</p>
+    {% endif %}
+
+    <h3>Sorts  (feu, soin, armageddon)</h3>
+    {% if opts.lanceurs %}
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="sort_magique">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
+        <div class="form-group">
+            <label>Lanceur</label>
+            <select name="morpion_id">
+                {% for item in opts.lanceurs %}
+                <option value="{{ item.id }}">{{ item.label }} — Mana {{ item.mana }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Type de sort</label>
+            <select name="type_sort">
+                <option value="feu">Boule de feu (2 mana)</option>
+                <option value="soin">Sort de soin (1 mana)</option>
+                <option value="arme">Armageddon (5 mana)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Case ennemie (pour feu ou armageddon)</label>
+            <select name="case_adverse">
+                <option value="">-- choisir si besoin --</option>
+                {% for item in opts.cibles %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Case alliée (pour le soin)</label>
+            <select name="case_allie">
+                <option value="">-- choisir si besoin --</option>
+                {% for item in opts.allies %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <p>Utilisez la liste ennemie pour feu/armageddon, et la liste alliée pour le soin.</p>
+        <button type="submit" class="btn-primary">Lancer le sort choisi</button>
+    </form>
+    {% else %}
+    <p class="alert-warning">Aucun lanceur disponible sur la grille.</p>
+    {% endif %}
+
+    <h3>Sort « Quand est né Jean Moulin ? »</h3>
+    {% if opts.lanceurs and opts.cibles %}
+    <form method="post" class="form-equipe">
+        <input type="hidden" name="action" value="sort_quiz">
+        <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
+        <div class="form-group">
+            <label>Lanceur (doit être posé)</label>
+            <select name="morpion_id">
+                {% for item in opts.lanceurs %}
+                <option value="{{ item.id }}">{{ item.label }} — Mana {{ item.mana }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Cible ennemie</label>
+            <select name="case_adverse">
+                {% for item in opts.cibles %}
+                <option value="{{ item.value }}">{{ item.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Réponse saisie par l'adversaire</label>
+            <input type="text" name="reponse_quiz" placeholder="Entre la réponse secrète">
+        </div>
+        <button type="submit" class="btn-primary">Lancer le sort</button>
+    </form>
+    {% else %}
+    <p class="alert-warning">
+        Pour utiliser le sort, il faut avoir un morpion allié déjà posé et une cible ennemie sur la grille.
+    </p>
+    {% endif %}
     {% else %}
     <form method="post" class="form-inline">
         <input type="hidden" name="action" value="abandonner">
@@ -197,20 +212,17 @@
         <button type="submit" class="btn-danger">Retirer la partie avancée</button>
     </form>
     {% endif %}
-
-    {% if etat.journal_local %}
-    <h3>Journal rapide</h3>
-    <ul>
-        {% for ligne in etat.journal_local|reverse %}
-        <li>{{ ligne }}</li>
-        {% endfor %}
-    </ul>
-    {% endif %}
 </section>
-{% endif %}
 
-{% if not REQUEST_VARS.get('partie_avancee') %}
-
+<script>
+const badges = document.querySelectorAll(".badge-couleur[data-color]");
+badges.forEach((badge) => {
+    const couleur = badge.getAttribute("data-color") || "#111111";
+    badge.style.backgroundColor = couleur;
+    badge.style.border = "1px solid " + couleur;
+    badge.style.color = "#ffffff";
+});
+</script>
 {% endif %}
 
 {% endblock %}

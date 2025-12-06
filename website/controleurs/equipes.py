@@ -54,9 +54,9 @@ def lister_morpions():
         ORDER BY nom
     """
     rows = execute_select_query(connexion, query, []) or []  # exécute la requête
-    morpions = []  # liste des morpions initialiser vide
+    morpions = []  
     for row in rows:  # on parcours chauqe ligne SQL (dc id, nom, image, vie, attaque, mana, reussite
-        morpions.append( # append permet d'ajouter l'élement dans la liste 
+        morpions.append(  
             {
                 "id": row[0],  
                 "nom": row[1], 
@@ -104,8 +104,7 @@ def lister_equipes():
         equipe_id = row[0] # la premiere colone c l'id de l'equip
         if equipe_id not in membres_par_equipe:
             membres_par_equipe[equipe_id] = []  #liste vide pour cette equipe 
-        membres_par_equipe[equipe_id].append({"nom": row[1], "ordre": row[2]})  # On ajoute 
-        # un petit dictionnaire contenant le nom du morpion (row[1]) et son ordre (row[2]) dans cette équipe
+        membres_par_equipe[equipe_id].append({"nom": row[1], "ordre": row[2]})  
 
     equipes = []  # liste creer qui contient les equipes 
 
@@ -143,49 +142,41 @@ def extraire_morpions_selectionnes(values):  # values = liste des ids envoyés p
 
 
 def creer_equipe():
-    nom = POST.get("nom", [""])[0].strip() 
+    nom = POST.get("nom", [""])[0].strip()  
 
-    # POST.get("nom", [""]) renvoie une liste des valeurs du champ nom
+        # POST.get("nom", [""]) renvoie une liste des valeurs du champ nom
     # [0] c la premiere valeur de la liste, strip() c pour enlever les espaces en debut et fin
-
     couleur = POST.get("couleur", [""])[0].strip()
-
-
     liste_ids_morpions_selectionnes = extraire_morpions_selectionnes(POST.get("morpions", []))
 
-    #POST.get("morpions", []) renvoie la liste brute des valeurs envoyees par le formulaire
-    # extraire_morpions_selectionnes(...) convertit ces valeurs en 
-    # entiers, garde l’ordre, et les stocke dans une liste Python (ex. [3, 7, 7]).
+    
 
-    REQUEST_VARS["form_values"] = {"nom": nom, "morpions": liste_ids_morpions_selectionnes, "couleur": couleur}
+    REQUEST_VARS["form_values"] = {
+        "nom": nom,
+        "morpions": liste_ids_morpions_selectionnes,
+        "couleur": couleur,
+    }
 
     if not nom:
         definir_message("Merci de renseigner un nom pour l'équipe.", "alert-warning")
         return
 
-    if len(liste_ids_morpions_selectionnes) < MIN_MORPIONS or len(liste_ids_morpions_selectionnes) > MAX_MORPIONS:  # vérifie les bornes
-       
-       # len cest une fonction qui renvoie le nombre d'elements dans la liste
-       
+    if len(liste_ids_morpions_selectionnes) < MIN_MORPIONS or len(liste_ids_morpions_selectionnes) > MAX_MORPIONS:
         definir_message(
-            f"Une équipe doit contenir entre {MIN_MORPIONS} et {MAX_MORPIONS} morpions (actuellement {len(liste_ids_morpions_selectionnes )} sélectionnés).",
+            f"Une équipe doit contenir entre {MIN_MORPIONS} et {MAX_MORPIONS} morpions (actuellement {len(liste_ids_morpions_selectionnes)} sélectionnés).",
             "alert-warning",
         )
         return
 
     try: #On entre dans un bloc “protégé” pour capter les erreurs SQL (par exemple une contrainte violée).
-
-        with connexion.cursor() as cursor:  # ouvre un curseur psql, permet d'executer des requetes SQL
+        with connexion.cursor() as cursor: # ouvre un curseur psql, permet d'executer des requetes SQL
             cursor.execute(
-                "INSERT INTO equipe (nom, couleur) VALUES (%s, %s) RETURNING id_equipe", 
+                "INSERT INTO equipe (nom, couleur) VALUES (%s, %s) RETURNING id_equipe",
                 (nom, couleur or None),
-
-                # On insère l’équipe dans la table equipe  (nom, couleur)
-                # via INSERT INTO ... RETURNING id_equipe : on dmd a psql de ns donne son identifiant (new_id).
             )
-            new_id = cursor.fetchone()[0]  # récupère l'identifiant créé et on le stocke ds new_id
-            ordre = 1  # ordre d'apparition de chaque morpion dans l'équipe
-            for morpion_id in liste_ids_morpions_selectionnes:  
+            new_id = cursor.fetchone()[0] # récupère l'identifiant créé et on le stocke ds new_id
+            ordre = 1 # ordre d'apparition de chaque morpion dans l'équipe
+            for morpion_id in liste_ids_morpions_selectionnes:
                 cursor.execute(
                     """
                     INSERT INTO morpion_equipe (id_equipe, id_morpion, ordre_dans_equipe)
@@ -193,16 +184,9 @@ def creer_equipe():
                     """,
                     (new_id, morpion_id, ordre),
                 )
-                ordre += 1  # pour garder l'ordre des morpions dans l'equipe (choisi par l'utilisateur)
-
-
-                
+                ordre += 1 # pour garder l'ordre des morpions dans l'equipe (choisi par l'utilisateur)
         definir_message(f"L'équipe « {nom} » a été créée avec succès.", "alert-success")
-
-        REQUEST_VARS["form_values"] = {"nom": "", "morpions": [], "couleur": ""}  # on vide le formulaire
-        #pour éviter de réafficher l’ancienne saisie.
-
-
+        REQUEST_VARS["form_values"] = {"nom": "", "morpions": [], "couleur": ""} #vider le formulaire pour eviter de réafficher l'ancienne saisie
     except Error as err:
         definir_message(f"Impossible de créer l'équipe : {err}", "alert-error")
 
@@ -245,7 +229,8 @@ def supprimer_equipe():
             if parties_associees:
                 for row in parties_associees:
                     part_id = row[0] # recuperer l id de la partie 
-                    cursor.execute("DELETE FROM journal WHERE id_partie = %s", (part_id,))
+                    cursor.execute("DELETE FROM journal WHERE id_partie = %s", (part_id,)) #%s sera remplacer par part_id
+                    # s : securite 
                     cursor.execute("DELETE FROM partie WHERE id_partie = %s", (part_id,))
 
             cursor.execute("DELETE FROM morpion_equipe WHERE id_equipe = %s", (equipe_id,))
@@ -255,14 +240,16 @@ def supprimer_equipe():
                 definir_message("Équipe introuvable ou déjà supprimée.", "alert-warning")
                 return
         definir_message("Équipe supprimée.", "alert-success")
+    except Error:
+        definir_message("Suppression impossible (l'équipe est peut-être liée à des parties).", "alert-error")
 
 
 
 
 # detection de l'action du formulaire 
 
-if POST and "action" in POST: # est ce que le formulaire a ete soumis et action est dans POST
-    action = POST["action"][0] # pr recuperer la premiere valeur de la lste
+if POST and "action" in POST:  # est ce que le formulaire a ete soumis et action est dans POST
+    action = POST["action"][0]  # pr recuperer la premiere valeur de la POST ACTION
     if action == "create":
         creer_equipe()
     elif action == "delete":

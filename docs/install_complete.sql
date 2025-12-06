@@ -1,18 +1,5 @@
--- ============================================================================
 -- SCRIPT D'INSTALLATION COMPLET
--- Base de données du jeu de morpion avancé - BDW 2025
--- ============================================================================
--- 
--- Ce script combine :
--- 1. Création du schéma et des tables (create_database.sql)
--- 2. Insertion des données de test (insert_data.sql)
---
--- Pour exécuter ce script :
--- psql -h bd-pedago.univ-lyon1.fr -U p1234567 -d p1234567 -f install_complete.sql
--- (Remplacer p1234567 par votre numéro étudiant)
---
--- Ou via pgweb : copier-coller tout le contenu et exécuter
--- ============================================================================
+
 
 \echo '================================================================================'
 \echo 'INSTALLATION DE LA BASE DE DONNÉES - JEU DE MORPION AVANCÉ'
@@ -41,7 +28,7 @@ DROP TABLE IF EXISTS configuration CASCADE;
 -- Table MORPION
 CREATE TABLE morpion (
     id_morpion SERIAL PRIMARY KEY,
-    nom VARCHAR(100) NOT NULL UNIQUE,
+    nom VARCHAR(100) NOT NULL UNIQUE, -- varchar pr les chaines de carc --
     image VARCHAR(255) NOT NULL,
     points_vie INTEGER NOT NULL CHECK (points_vie >= 1),
     points_attaque INTEGER NOT NULL CHECK (points_attaque >= 1),
@@ -153,11 +140,15 @@ DECLARE
     max_numero INTEGER;
 BEGIN
     IF NEW.numero_ligne IS NULL THEN
-        SELECT COALESCE(MAX(numero_ligne), 0) + 1 INTO max_numero
+        SELECT MAX(numero_ligne) INTO max_numero
         FROM journal
         WHERE id_partie = NEW.id_partie;
-        
-        NEW.numero_ligne := max_numero;
+
+        IF max_numero IS NULL THEN
+            NEW.numero_ligne := 1;
+        ELSE
+            NEW.numero_ligne := max_numero + 1;
+        END IF;
     END IF;
     
     RETURN NEW;
@@ -218,50 +209,46 @@ ORDER BY annee DESC, mois DESC;
 \echo 'Étape 2/3 : Insertion des données de test...'
 \echo ''
 
--- Insertion des morpions
+-- Insertion des morpions (noms simples pour coller aux fichiers t1 -> t16)
 INSERT INTO morpion (nom, image, points_vie, points_attaque, points_mana, points_reussite) VALUES
-('Dragon Rouge', 'static/images/morpions/dragon_rouge.png', 4, 4, 4, 3),
-('Chevalier Noble', 'static/images/morpions/chevalier_noble.png', 5, 4, 3, 3),
-('Mage Sage', 'static/images/morpions/mage_sage.png', 3, 2, 6, 4),
-('Guerrier Brutal', 'static/images/morpions/guerrier_brutal.png', 4, 7, 2, 2),
-('Assassin Sombre', 'static/images/morpions/assassin_sombre.png', 3, 6, 2, 4),
-('Berserker', 'static/images/morpions/berserker.png', 6, 6, 1, 2),
-('Archimage', 'static/images/morpions/archimage.png', 3, 1, 8, 3),
-('Sorcier Mystique', 'static/images/morpions/sorcier_mystique.png', 2, 2, 7, 4),
-('Enchanteur', 'static/images/morpions/enchanteur.png', 4, 2, 6, 3),
-('Paladin Sacré', 'static/images/morpions/paladin_sacre.png', 7, 3, 3, 2),
-('Gardien Ancien', 'static/images/morpions/gardien_ancien.png', 8, 2, 2, 3),
-('Prêtre Guérisseur', 'static/images/morpions/pretre_guerisseur.png', 5, 1, 7, 2),
-('Maître d''Armes', 'static/images/morpions/maitre_armes.png', 3, 4, 2, 6),
-('Ninja Précis', 'static/images/morpions/ninja_precis.png', 2, 3, 3, 7),
-('Archer Elfe', 'static/images/morpions/archer_elfe.png', 3, 3, 4, 5),
-('Golem de Pierre', 'static/images/morpions/golem_pierre.png', 7, 4, 1, 3),
-('Esprit Éthéré', 'static/images/morpions/esprit_ethere.png', 2, 3, 6, 4),
-('Druide Naturel', 'static/images/morpions/druide_naturel.png', 4, 3, 5, 3),
-('Vampire Nocturne', 'static/images/morpions/vampire_nocturne.png', 5, 5, 2, 3),
-('Phoenix Éternel', 'static/images/morpions/phoenix_eternel.png', 4, 4, 5, 2);
+('Morpion 01', 'static/img/morpions/t1.png', 4, 4, 4, 3),
+('Morpion 02', 'static/img/morpions/t2.png', 5, 4, 3, 3),
+('Morpion 03', 'static/img/morpions/t3.png', 3, 2, 6, 4),
+('Morpion 04', 'static/img/morpions/t4.png', 4, 7, 2, 2),
+('Morpion 05', 'static/img/morpions/t5.png', 3, 6, 2, 4),
+('Morpion 06', 'static/img/morpions/t6.png', 6, 6, 1, 2),
+('Morpion 07', 'static/img/morpions/t7.png', 3, 1, 8, 3),
+('Morpion 08', 'static/img/morpions/t8.png', 2, 2, 7, 4),
+('Morpion 09', 'static/img/morpions/t9.png', 4, 2, 6, 3),
+('Morpion 10', 'static/img/morpions/t10.png', 7, 3, 3, 2),
+('Morpion 11', 'static/img/morpions/t11.png', 8, 2, 2, 3),
+('Morpion 12', 'static/img/morpions/t12.png', 5, 1, 7, 2),
+('Morpion 13', 'static/img/morpions/t13.png', 3, 4, 2, 6),
+('Morpion 14', 'static/img/morpions/t14.png', 2, 3, 3, 7),
+('Morpion 15', 'static/img/morpions/t15.png', 3, 3, 4, 5),
+('Morpion 16', 'static/img/morpions/t16.png', 7, 4, 1, 3);
 
-\echo '✓ 20 morpions insérés'
+\echo '✓ 16 morpions insérés'
 
--- Insertion des équipes
+-- Insertion des équipes (noms alignés avec les tests côté site)
 INSERT INTO equipe (nom, couleur, date_creation) VALUES
-('Les Flammes Éternelles', 'red', CURRENT_TIMESTAMP - INTERVAL '30 days'),
-('Les Gardiens de l''Aube', 'blue', CURRENT_TIMESTAMP - INTERVAL '25 days'),
-('Les Ombres Silencieuses', 'black', CURRENT_TIMESTAMP - INTERVAL '20 days'),
-('Les Sages Mystiques', 'purple', CURRENT_TIMESTAMP - INTERVAL '15 days'),
-('Les Braves Chevaliers', 'gold', CURRENT_TIMESTAMP - INTERVAL '10 days'),
-('Les Forces de la Nature', 'green', CURRENT_TIMESTAMP - INTERVAL '5 days');
+('LYON', '#cc0000', CURRENT_TIMESTAMP - INTERVAL '30 days'),
+('OM', '#004b8d', CURRENT_TIMESTAMP - INTERVAL '25 days'),
+('NICE', '#111111', CURRENT_TIMESTAMP - INTERVAL '20 days'),
+('RENNES', '#22884a', CURRENT_TIMESTAMP - INTERVAL '15 days'),
+('MONACO', '#d4af37', CURRENT_TIMESTAMP - INTERVAL '10 days'),
+('LILLE', '#6a1b9a', CURRENT_TIMESTAMP - INTERVAL '5 days');
 
 \echo '✓ 6 équipes insérées'
 
--- Liaison morpions-équipes
+-- Liaison morpions-équipes (6 à 8 morpions chacun)
 INSERT INTO morpion_equipe (id_equipe, id_morpion, ordre_dans_equipe) VALUES
-(1, 1, 1), (1, 4, 2), (1, 6, 3), (1, 19, 4), (1, 20, 5), (1, 16, 6), (1, 5, 7),
-(2, 2, 1), (2, 10, 2), (2, 11, 3), (2, 12, 4), (2, 13, 5), (2, 15, 6), (2, 16, 7), (2, 3, 8),
-(3, 5, 1), (3, 14, 2), (3, 15, 3), (3, 13, 4), (3, 19, 5), (3, 17, 6),
-(4, 3, 1), (4, 7, 2), (4, 8, 3), (4, 9, 4), (4, 17, 5), (4, 18, 6), (4, 12, 7), (4, 20, 8),
-(5, 2, 1), (5, 1, 2), (5, 10, 3), (5, 4, 4), (5, 13, 5), (5, 3, 6), (5, 18, 7),
-(6, 18, 1), (6, 20, 2), (6, 11, 3), (6, 17, 4), (6, 15, 5), (6, 9, 6), (6, 16, 7);
+(1, 1, 1), (1, 4, 2), (1, 6, 3), (1, 9, 4), (1, 10, 5), (1, 15, 6),
+(2, 2, 1), (2, 3, 2), (2, 5, 3), (2, 7, 4), (2, 11, 5), (2, 12, 6), (2, 16, 7),
+(3, 4, 1), (3, 8, 2), (3, 13, 3), (3, 14, 4), (3, 15, 5), (3, 16, 6),
+(4, 3, 1), (4, 9, 2), (4, 10, 3), (4, 11, 4), (4, 12, 5), (4, 13, 6), (4, 14, 7),
+(5, 1, 1), (5, 2, 2), (5, 5, 3), (5, 6, 4), (5, 7, 5), (5, 8, 6), (5, 15, 7),
+(6, 4, 1), (6, 9, 2), (6, 10, 3), (6, 11, 4), (6, 12, 5), (6, 13, 6), (6, 14, 7), (6, 16, 8);
 
 \echo '✓ Morpions assignés aux équipes'
 
@@ -275,26 +262,26 @@ INSERT INTO configuration (taille_grille, nb_max_tours, somme_caracteristiques, 
 
 \echo '✓ 5 configurations insérées'
 
--- Insertion des parties
+-- Insertion des parties (permet de montrer les statistiques "Plus rapide" / "Plus longue")
 INSERT INTO partie (id_equipe1, id_equipe2, id_equipe_gagnante, id_configuration, date_debut, date_fin, tour_actuel) VALUES
-(1, 2, 1, 1, CURRENT_TIMESTAMP - INTERVAL '10 days', CURRENT_TIMESTAMP - INTERVAL '10 days' + INTERVAL '5 minutes', 8),
-(3, 4, 4, 2, CURRENT_TIMESTAMP - INTERVAL '8 days', CURRENT_TIMESTAMP - INTERVAL '8 days' + INTERVAL '45 minutes', 28),
-(1, 5, 2, 3, CURRENT_TIMESTAMP - INTERVAL '6 days', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '12 minutes', 10),
-(5, 6, NULL, 1, CURRENT_TIMESTAMP - INTERVAL '1 hour', NULL, 5),
-(1, 3, 1, 3, CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '3 minutes', 6),
-(2, 4, 4, 2, CURRENT_TIMESTAMP - INTERVAL '4 days', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '20 minutes', 15),
-(1, 6, 1, 1, CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '8 minutes', 9);
+(1, 2, 1, 1, CURRENT_TIMESTAMP - INTERVAL '2 days', CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '56 seconds', 6),
+(3, 4, 4, 2, CURRENT_TIMESTAMP - INTERVAL '36 hours', CURRENT_TIMESTAMP - INTERVAL '36 hours' + INTERVAL '25 minutes', 18),
+(5, 6, NULL, 3, CURRENT_TIMESTAMP - INTERVAL '90 minutes', NULL, 5),
+(2, 5, 2, 4, CURRENT_TIMESTAMP - INTERVAL '4 days', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '8 minutes', 9),
+(1, 3, 1, 5, CURRENT_TIMESTAMP - INTERVAL '5 days', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '3 minutes', 6),
+(4, 6, 4, 2, CURRENT_TIMESTAMP - INTERVAL '3 days', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '18 minutes', 15),
+(2, 4, 2, 1, CURRENT_TIMESTAMP - INTERVAL '6 days', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '56 seconds', 7);
 
 \echo '✓ 7 parties insérées'
 
 -- Insertion des entrées de journal (exemples)
 INSERT INTO journal (id_partie, numero_ligne, date_action, texte_action) VALUES
-(1, NULL, CURRENT_TIMESTAMP - INTERVAL '10 days', 'Début de la partie entre Les Flammes Éternelles et Les Gardiens de l''Aube'),
-(1, NULL, CURRENT_TIMESTAMP - INTERVAL '10 days' + INTERVAL '30 seconds', 'Tour 1 - Les Flammes Éternelles placent Dragon Rouge en position (1,1)'),
-(1, NULL, CURRENT_TIMESTAMP - INTERVAL '10 days' + INTERVAL '1 minute', 'Tour 1 - Les Gardiens de l''Aube placent Chevalier Noble en position (0,0)'),
-(1, NULL, CURRENT_TIMESTAMP - INTERVAL '10 days' + INTERVAL '5 minutes', 'VICTOIRE - Les Flammes Éternelles ont aligné 3 morpions !'),
-(4, NULL, CURRENT_TIMESTAMP - INTERVAL '1 hour', 'Début de la partie entre Les Braves Chevaliers et Les Forces de la Nature'),
-(4, NULL, CURRENT_TIMESTAMP - INTERVAL '55 minutes', 'Tour 1 - Les Braves Chevaliers placent Chevalier Noble en position (1,1)');
+(1, NULL, CURRENT_TIMESTAMP - INTERVAL '2 days', 'Début de la partie entre LYON et OM'),
+(1, NULL, CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '10 seconds', 'Tour 1 - LYON place Morpion 01 en (1,1)'),
+(1, NULL, CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '25 seconds', 'Tour 1 - OM place Morpion 02 en (0,0)'),
+(1, NULL, CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '56 seconds', 'VICTOIRE - LYON aligne trois morpions en un temps record !'),
+(3, NULL, CURRENT_TIMESTAMP - INTERVAL '90 minutes', 'Début de la partie entre MONACO et LILLE'),
+(3, NULL, CURRENT_TIMESTAMP - INTERVAL '80 minutes', 'Tour 1 - MONACO place Morpion 06 en (1,1)');
 
 \echo '✓ Entrées de journal insérées'
 \echo ''
@@ -332,7 +319,7 @@ SELECT nom, nb_victoires FROM v_top_equipes;
 
 \echo ''
 \echo '================================================================================'
-\echo 'Pour utiliser le schéma, exécutez :'
+\echo 'Pour utiliser le schéma, tu fais'
 \echo '  SET SEARCH_PATH TO morpion_avance;'
 \echo ''
 \echo 'Pour lister les tables :'

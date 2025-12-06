@@ -18,40 +18,32 @@ connexion = SESSION["CONNEXION"]
 
 # Là, on prend la duree des parties en scds et on les transforme en un texte 
 
-def formater_duree(seconds):  # en paramt j met un nombre de secondes en entrée
+def formater_duree(seconds): 
     if seconds is None:  
         return "—"  
-    seconds = int(seconds)  # on force pr que seconds soit un entier pour eviter les floats 
+    seconds = int(seconds)  
     hours, remainder = divmod(seconds, 3600)  
     
-    # divmod pr diviser : ici on divise le nombre total de secondes par 3600.
- #hours reçoit combien d’heures complètes on peut faire (ex : 5400 s → 1 h).
+#hours reçoit combien d’heures complètes on peut faire (ex : 5400 s → 1 h).
+
 #remainder reçoit ce qu’il reste en secondes après avoir enlevé ces heures (ex : 5400 s → reste 1800 s).
 
 
-    minutes, secs = divmod(remainder, 60)  # on transforme le reste en minutes et secondes
+    minutes, secs = divmod(remainder, 60)  
 
 
-    parts = []  # j initialise la liste PARTIES du temps qu'on va afficher en tq vide 
-    if hours:   # si la duree contient des heur 
-        parts.append(f"{hours} h")  # append permet d'ajouter l'élement dans la liste 
-        # note que f permet d'inserer des variables dans la chaine de caractères 
-        # par exemple on ajoute 2h si hours vaut 2 
-        # donc ici ce quon fait, cest ajouter X h a la liste 
+    parts = []  
+    if hours:  
+        parts.append(f"{hours} h")  
+       
 
     if minutes: 
         parts.append(f"{minutes} min")   
     if secs or not parts:                        # le or not parties cest pr etre sur d afficher au moins "0 s"
         parts.append(f"{secs} s")  
-    return " ".join(parts)  # j assemble la chaîne finale
-    # et " " est le séparateur : "2h" "15 min" "5 s" 
+    return " ".join(parts)
 
 
-# exemple pr que tu comprennes : 
-#notes = []
-#notes.append(15)
-#notes.append(12)
-#notes vaut maintenant [15, 12]
 
 
 #Fonction pour renvoyer un texte affichable pour le template
@@ -72,15 +64,16 @@ def formatter_partie(partie_dict): #prend partie_dict du model_pg avec les infos
 
 
 #on prépare la liste qui sera utilisée par accueil.html pour 
-#afficher les statistiques 
+
+#afficher les statistiques express  
 
 
-REQUEST_VARS["table_counts"] = get_table_counts( 
-    connexion, # pr aller dans psql pr executer les count * 
+REQUEST_VARS["table_counts"] = get_table_counts( # on appel la fct du model qui sait faire des count * sr pls tables 
+    connexion, # pr aller dans psql pr executer les count * (on donne la connexion a la fct)
 
     # on fournit au model la liste des tables a compter 
     [
-        ("Morpions", "morpion"),
+        ("Morpions", "morpion"), #  select count(*) from morpion
         ("Équipes", "equipe"),
         ("Parties", "partie"),
     ],
@@ -101,7 +94,6 @@ REQUEST_VARS["top_equipes"] = get_top_equipes(connexion, limite=3)
 
 
 
-# Parties les plus rapide et la plus longue 
 
 REQUEST_VARS["partie_plus_rapide"] = formatter_partie(get_partie_par_duree(connexion, "ASC"))
 REQUEST_VARS["partie_plus_longue"] = formatter_partie(get_partie_par_duree(connexion, "DESC"))

@@ -4,45 +4,55 @@
 <section>
     <h2>Créer une partie normale</h2>
     <p>Sélectionnez deux équipes différentes, la taille de la grille (3x3 ou 4x4) et le nombre maximal de tours.</p>
-    {% include 'message.html' %}
-    <form method="post" class="form-equipe">
-        <input type="hidden" name="action" value="creer">
+    {% include 'message.html' %} <!-- Inclut le contenu d’un autre template appelé message.html.
+
+    Souvent utilisé pour afficher des messages d’erreur ou de succès venant du serveur (REQUEST_VARS['message']). -->
+    <form method="post" class="form-equipe"> 
+        <input type="hidden" name="action" value="creer"> 
+        <!-- Cette ligne cache un champ caché qui contient la valeur creer, ca permet au code de sv quil doit 
+         crrer une nouvelle equipe qd le formulaire est soumi -->
         <div class="form-group">
             <label for="equipe1">Équipe 1</label>
-            <select name="equipe1" id="equipe1" required>
+            <select name="equipe1" id="equipe1" required> <!-- Crée un menu déroulant pour sélectionner une équipe. -->
                 <option value="">-- choisissez --</option>
                 {% for eq in REQUEST_VARS['equipes_disponibles'] %}
-                <option value="{{ eq.id }}">
-                    {{ eq.nom }}
+                <option value="{{ eq.id }}"> <!-- Affiche le nom de l’équipe et son code couleur s’il y en a un.  menu deroulant  -->
+                   {{ eq.nom }}
                     {% if eq.couleur %}({{ eq.couleur }}){% endif %}
                 </option>
                 {% endfor %}
             </select>
+
+            <div class="form-group">
+                <label for="equipe2">Équipe 2</label>
+                <select name="equipe2" id="equipe2" required>
+                    <option value="">-- choisissez --</option>
+                    {% for eq in REQUEST_VARS['equipes_disponibles'] %}
+                    <option value="{{ eq.id }}">
+                        {{ eq.nom }}
+                        {% if eq.couleur %}({{ eq.couleur }}){% endif %}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
         </div>
-        <div class="form-group">
-            <label for="equipe2">Équipe 2</label>
-            <select name="equipe2" id="equipe2" required>
-                <option value="">-- choisissez --</option>
-                {% for eq in REQUEST_VARS['equipes_disponibles'] %}
-                <option value="{{ eq.id }}">
-                    {{ eq.nom }}
-                    {% if eq.couleur %}({{ eq.couleur }}){% endif %}
-                </option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="form-group">
+        <div class="form-group"> <!-- from group pr ajouter des marge et un espacement cool -->
             <label for="taille">Taille de la grille</label>
             <select name="taille" id="taille">
-                <option value="3">3 x 3</option>
+                <option value="3">3 x 3</option> <!-- cq option a un value envoyer au serveur et un txt pr l utilisateur-->
                 <option value="4">4 x 4</option>
             </select>
         </div>
         <div class="form-group">
             <label for="max_tours">Nombre maximal de tours</label>
             <input type="number" name="max_tours" id="max_tours" min="3" max="20" value="9">
+            <!-- Champ numérique où l’utilisateur peut entrer un nombre.
+
+min et max limitent les valeurs possibles (ici entre 3 et 20).
+
+value="9" → valeur par défaut affichée au chargement du formulaire.--> 
         </div>
-        <button type="submit" class="btn-primary">Démarrer la partie</button>
+        <button type="submit" class="btn-primary">Démarrer la partie</button> <!-- class="btn-primary" → style visue-->
     </form>
 </section>
 

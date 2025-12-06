@@ -9,17 +9,27 @@ from model.model_pg import execute_select_query
 add_activity(SESSION["HISTORIQUE"], "ouverture de la page partie normale")  
 
 connexion = SESSION["CONNEXION"]   
-PARTIES_STATE = SESSION.setdefault("PARTIES_STATE", dict())  # dictionnaire conservé entre les requêtes
+PARTIES_STATE = SESSION.setdefault("PARTIES_STATE", dict())  
 
+# setdefautlt verfie si la clef existe, sinon elle la creer avec la valeur du deuxieme argument (dict)
+# si la clé PARTIES_STATE n’existe pas encore dans la session, crée-la avec la valeur dict() (un dictionnaire vide), puis renvoie la valeur associée
+# dict : C’est une structure qui sert à associer des clés à des valeurs.
+
+
+
+""" fonction qui va lire les equipes existantes dans la base de donnees """
 
 def charger_equipes():
      
     rows = execute_select_query(connexion, "SELECT id_equipe, nom, couleur FROM equipe ORDER BY nom", []) or []
-    equipes = []  # liste finale
+    equipes = []  # on prepare une liste vide pour stocker les equipes
     for row in rows:  # chaque row = (id, nom)
         equipes.append({"id": row[0], "nom": row[1], "couleur": row[2]})  # on convertit en dictionnaire lisible
     return equipes
 
+    
+
+""" fonction qui prend en entree l'id dune equipe et retourne les morpions de cette equipe """ 
 
 def charger_morpions_equipe(equipe_id):
      
@@ -36,7 +46,7 @@ def charger_morpions_equipe(equipe_id):
     ) or []
     morpions = []
     for row in rows:
-        morpions.append({"id": row[0], "nom": row[1]})  # même logique : conversion tuple -> dict
+        morpions.append({"id": row[0], "nom": row[1]})   
     return morpions
 
 
@@ -57,9 +67,9 @@ def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
         row[0]: {"nom": row[1], "couleur": row[2]}
         for row in eq_rows
     }  # dictionnaire rapide {id: infos}
-    morpions_eq1 = charger_morpions_equipe(equipe1_id)  # liste des morpions de l'équipe 1
+    morpions_eq1 = charger_morpions_equipe(equipe1_id)   
     morpions_eq2 = charger_morpions_equipe(equipe2_id)  # liste des morpions de l'équipe 2
-    if len(morpions_eq1) < 1 or len(morpions_eq2) < 1:  # une équipe vide n'a pas de sens
+    if len(morpions_eq1) < 1 or len(morpions_eq2) < 1:  
         return None, "Chaque équipe doit avoir au moins un morpion."
 
     try:
@@ -82,12 +92,12 @@ def initialiser_partie(equipe1_id, equipe2_id, taille_grille, max_tours):
                 """,
                 (equipe1_id, equipe2_id, config_id),
             )
-            partie_id = cursor.fetchone()[0]  # on garde l'id pour la suite
+            partie_id = cursor.fetchone()[0]  # on garde l'id pour la suite. cursor.fetchone() récupère la ligne renvoyée par la requête (
     except Exception as exc:  # en cas d'erreur SQL, on renvoie le message
         return None, f"Erreur lors de la création de la partie : {exc}"
 
     plateau = [[None for _ in range(taille_grille)] for _ in range(taille_grille)]  # grille vide
-    PARTIES_STATE[partie_id] = {  # on stocke l'état initial dans la session
+    PARTIES_STATE[partie_id] = {  # on stocke l'état initial dans la session (partie state etant le dico) 
         "taille": taille_grille,
         "max_tours": max_tours,
         "tour_actuel": 1,
