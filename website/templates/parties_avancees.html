@@ -1,17 +1,18 @@
 {% extends "base.html" %}
 
 {% block main_content %}
+<!-- Bloc principal affiché sur la page Partie avancée -->
 <section>
     <h2>Créer une partie avancée</h2>
     <p>On suit la même logique que la partie normale : choisir 2 équipes, la taille et la limite de tours.</p>
-    {% include 'message.html' %}
+    {% include 'message.html' %} {# zone pour afficher les messages transmis par le contrôleur #}
     <form method="post" class="form-equipe">
-        <input type="hidden" name="action" value="creer">
-        <div class="form-group">
+        <input type="hidden" name="action" value="creer"> {# indique au contrôleur l'action à réaliser #}
+        <div class="form-group"> {# form group pr un affichage en colone et un espacement (voir stylecss)#}
             <label for="eq1_av">Équipe 1</label>
             <select name="equipe1" id="eq1_av" required>
                 <option value="">-- choisissez --</option>
-                {% for eq in REQUEST_VARS['equipes_disponibles'] %}
+                {% for eq in REQUEST_VARS['equipes_disponibles'] %} {# on liste toutes les équipes chargées depuis la base #}
                 <option value="{{ eq.id }}">{{ eq.nom }}</option>
                 {% endfor %}
             </select>
@@ -20,7 +21,7 @@
             <label for="eq2_av">Équipe 2</label>
             <select name="equipe2" id="eq2_av" required>
                 <option value="">-- choisissez --</option>
-                {% for eq in REQUEST_VARS['equipes_disponibles'] %}
+                {% for eq in REQUEST_VARS['equipes_disponibles'] %} {# même boucle pour l'équipe 2 #}
                 <option value="{{ eq.id }}">{{ eq.nom }}</option>
                 {% endfor %}
             </select>
@@ -36,28 +37,28 @@
             <label for="max_tours_av">Nombre maximal de tours</label>
             <input type="number" name="max_tours" id="max_tours_av" min="6" max="30" value="12">
         </div>
-        <button type="submit" class="btn-primary">Lancer la partie avancée</button>
+        <button type="submit" class="btn-primary">Lancer la partie avancée</button> {# bnt primary pr un style unifrm ds bouton #}
     </form>
 </section>
 
-{% if REQUEST_VARS.get('partie_avancee') %}
-{% set etat = REQUEST_VARS['partie_avancee'] %}
+{% if REQUEST_VARS.get('partie_avancee') %} {# On affiche la suite uniquement si une partie est en mémoire #}
+{% set etat = REQUEST_VARS['partie_avancee'] %} {# Raccourci local pour éviter de répéter REQUEST_VARS #}
 <section>
     <h2>Partie avancée en cours</h2>
     <p>
         Partie #{{ REQUEST_VARS['partie_avancee_id'] }} –
         Tour {{ etat.tour_actuel }} / {{ etat.max_tours }} –
-        Joueuse actuelle : <strong>{{ etat.equipes[etat.joueur_courant].nom }}</strong>
+        Joueuse actuelle : <strong>{{ etat.equipes[etat.joueur_courant].nom }}</strong> {# On affiche le nom de l'équipe qui doit jouer #}
     </p>
     {% if etat.terminee %}
     <p class="alert-success">{{ etat.message }}</p>
     {% endif %}
 
     <div class="plateau">
-        {% for lig in range(etat.taille) %}
+        {% for lig in range(etat.taille) %} {# boucle sur les lignes du plateau #}
         <div class="plateau-row">
-            {% for col in range(etat.taille) %}
-            {% set case = etat.plateau[lig][col] %}
+            {% for col in range(etat.taille) %} {# boucle sur les colonnes #}
+            {% set case = etat.plateau[lig][col] %} {# case = None ou dictionnaire avec infos du morpion #}
             <div class="cellule">
                 {% if case %}
                 <span class="badge-couleur" data-color="{{ case.couleur|default('#111111') }}">{{ case.morpion_nom }}</span>
@@ -70,7 +71,7 @@
         {% endfor %}
     </div>
 
-    {% if not etat.terminee %}
+    {% if not etat.terminee %} {# Tant que la partie n’est pas finie on propose les actions #}
     <h3>Jouer un coup </h3>
     <form method="post" class="form-equipe">
         <input type="hidden" name="action" value="jouer">
@@ -79,7 +80,7 @@
             <label>Choisissez un morpion de {{ etat.equipes[etat.joueur_courant].nom }}</label>
             <select name="morpion_id">
                 {% for m in etat.equipes[etat.joueur_courant].morpions %}
-                <option value="{{ m.id }}">{{ m.nom }}</option>
+                <option value="{{ m.instance_id|default(m.id) }}">{{ m.nom }}</option>
                 {% endfor %}
             </select>
         </div>
@@ -95,13 +96,13 @@
                 {% endfor %}
             </select>
         </div>
-        <button type="submit" class="btn-primary">Valider le coup</button>
+        <button type="submit" class="btn-primary">Valider le coup</button> {# bnt primary pr un style unifrm ds bouton #}
     </form>
 
     {% set opts = REQUEST_VARS['options_sort'] %}
 
     <h3>Combat (rapproché)</h3>
-    {% if opts.lanceurs and opts.cibles %}
+    {% if opts.lanceurs and opts.cibles %} {# On ne montre le formulaire que si au moins un lanceur et une cible existent #}
     <form method="post" class="form-equipe">
         <input type="hidden" name="action" value="combat">
         <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
@@ -128,7 +129,7 @@
     {% endif %}
 
     <h3>Sorts  (feu, soin, armageddon)</h3>
-    {% if opts.lanceurs %}
+    {% if opts.lanceurs %} {# Pas de sorts possibles si aucun morpion allié n’est posé #}
     <form method="post" class="form-equipe">
         <input type="hidden" name="action" value="sort_magique">
         <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
@@ -174,7 +175,7 @@
     {% endif %}
 
     <h3>Sort « Quand est né Jean Moulin ? »</h3>
-    {% if opts.lanceurs and opts.cibles %}
+    {% if opts.lanceurs and opts.cibles %} {# Même condition que pour le combat : un lanceur + une cible nécessaires #}
     <form method="post" class="form-equipe">
         <input type="hidden" name="action" value="sort_quiz">
         <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
@@ -205,7 +206,7 @@
         Pour utiliser le sort, il faut avoir un morpion allié déjà posé et une cible ennemie sur la grille.
     </p>
     {% endif %}
-    {% else %}
+    {% else %} {# Si la partie est terminée, on offre seulement la possibilité de la retirer #}
     <form method="post" class="form-inline">
         <input type="hidden" name="action" value="abandonner">
         <input type="hidden" name="partie_id" value="{{ REQUEST_VARS['partie_avancee_id'] }}">
@@ -215,15 +216,20 @@
 </section>
 
 <script>
+// Cherche tous les badges qui ont la class badge-couleur et qui ont la data-color
 const badges = document.querySelectorAll(".badge-couleur[data-color]");
+// parcours chaque element de la liste badges
 badges.forEach((badge) => {
-    const couleur = badge.getAttribute("data-color") || "#111111";
+    // Récupère la couleur indiquée ou une valeur par défaut
+    const couleur = badge.getAttribute("data-color") || "#111111"; // getAttribute lit la coul de datecolor
+    // applique la couleur comme fond et bordure
     badge.style.backgroundColor = couleur;
     badge.style.border = "1px solid " + couleur;
+    // texte en blanc pour être lisible
     badge.style.color = "#ffffff";
 });
 </script>
-{% endif %}
+{% endif %} {# Fin du bloc affichant la partie avancée #}
 
 {% endblock %}
 

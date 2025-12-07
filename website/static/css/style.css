@@ -20,12 +20,13 @@ img {
 
 #div-central {
     display: flex;
+    flex-direction: row-reverse; /* menu déplacé à droite */
     gap: 20px;
     align-items: flex-start;
 }
 
 header {
-    background: linear-gradient(135deg, #ecc183, #ffa201);
+    background: linear-gradient(70deg, #ffffff, #fffb00);
     color: #111;
     padding: 20px;
     text-align: center;
@@ -250,7 +251,7 @@ td {
 
 footer {
     margin-top: 30px;
-    background: #11ff00;
+    background: #ffdd00;
     color: #000000;
     padding: 12px;
     border-radius: 10px;

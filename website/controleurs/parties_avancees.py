@@ -25,7 +25,7 @@ REQUEST_VARS.setdefault("options_sort", {"lanceurs": [], "cibles": [], "allies":
 
 def charger_equipes():
     rows = execute_select_query(connexion, "SELECT id_equipe, nom, couleur FROM equipe ORDER BY nom", []) or []
-    return [{"id": row[0], "nom": row[1], "couleur": row[2]} for row in rows]
+    return [{"id": row[0], "nom": row[1], "couleur": row[2]} for row in rows] # for row in row :parocurs  lignes de la requete SQL
 
 
 # Exemple : (3, "Les Flèches", "#ff0000") devient {"id": 3, "nom": "Les Flèches", "couleur": "#ff0000"}.
@@ -54,7 +54,7 @@ def charger_morpions_complets(equipe_id):
         """,
         [equipe_id],
     ) or []
-    data = [] # on prepare une liste vide pour stocker les morpions
+    data = []  
     for row in rows: # on parcourt les lignes de la requete SQL
         data.append({
             "id": row[0],
@@ -78,7 +78,9 @@ def charger_morpions_complets(equipe_id):
 def creer_caracs(morpions, camp):
     caracs = {} # on prepare un dictionnaire vide pour stocker les caracteristique
     for m in morpions: # m est un dicto avec id nom mana 
-        caracs[m["id"]] = {  # on crée une entrée dans le dictionnaire final caracs, en utilisant l’identifiant du morpion comme clé.
+        instance_id = f"{camp}-{m['id']}"  # identifiant unique par équipe
+        m["instance_id"] = instance_id  # on mémorise cet id pour les menus déroulants
+        caracs[instance_id] = {  # on crée une entrée dans le dictionnaire final caracs
             "nom": m["nom"],
             "camp": camp, # car camp nest pas dans morpion 
             "etat": "reserve",
@@ -99,7 +101,7 @@ def creer_caracs(morpions, camp):
 """carac est chaque dico decrivant un morpion"""
 
 def action_reussie(carac):
-    chance = carac.get("reussite", 1) * 10 # carac cest le dico qui decrit un morpion 
+    chance = carac.get("reussite", 1) * 10  
     tirage = random.randint(0, 100) # randit pour tirer un nombre aleatoire entre 0 et 100
     return tirage < chance
 
@@ -119,16 +121,7 @@ def retirer_morpion_du_plateau(etat, morpion_id):
                 etat["plateau"][lig][col] = None # on la vide
 
 
-# Donc case.get("morpion_id") veut dire « va dans
-# le dictionnaire case et récupère la valeur associée à la clé "morpion_id" ». 
-# Si cette clé n’existe pas (par exemple case vide ou détruite),
-
-# GET RENVOIE LA VALEUR ASSOCIEE A UNE CLE, SI LA CLE N'EXISTE PAS, RENVOIE NONE
-
-# On écrit case.get("morpion_id") plutôt que case["morpion_id"] pour deux raisons :
-# La case peut être vide (None) : on teste d’abord if case, pour ne pas appeler .get sur None.
-# Le dictionnaire de la case n’a pas toujours la clé morpion_id
-# Avec .get("morpion_id"), si la clé n’existe pas, on récupère None sans lever d’exception.
+# interet de get : peut renvoyer none si la clé n'existe pas
 
 def verifier_elimination(etat, camp_adverse):
     """Vérifie si l'équipe adverse n'a plus de morpions en vie."""
@@ -143,7 +136,50 @@ def verifier_elimination(etat, camp_adverse):
 
 def conclure_action(etat, partie_id, texte):
     """Enregistrer le texte, avancer les compteurs et tester les fins de partie."""
-    return conclure_action(etat, partie_id, texte)
+    inserer_journal(partie_id, texte)  # on note l'action dans le journal
+    etat["message"] = texte  # message affiché sur la page
+    etat["actions"] += 1  # on compte l'action
+    etat["tour_actuel"] += 1  # on incrémente le numéro de tour
+
+    joueur = etat["joueur_courant"]
+    equipe = etat["equipes"][joueur]
+    # vérification des fins possibles après l'action
+    gagnante_id = None
+    if verifier_victoire(etat["plateau"], joueur):
+        etat["terminee"] = True
+        etat["message"] = f"Victoire de {equipe['nom']} !"
+        gagnante_id = equipe["id"]
+    elif verifier_elimination(etat, 2 if joueur == 1 else 1):
+        etat["terminee"] = True
+        etat["message"] = f"Tous les morpions adverses sont éliminés. {equipe['nom']} gagne."
+        gagnante_id = equipe["id"]
+    elif etat["actions"] >= etat["max_tours"] or etat["actions"] >= etat["taille"] ** 2:
+        etat["terminee"] = True
+        etat["message"] = "Fin de partie (tours ou cases épuisés)."
+    else:
+        basculer_tour(etat)  # on passe la main à l'autre équipe si la partie continue
+    # mise à jour de la table partie pour refléter l'état actuel
+    try:
+        with connexion.cursor() as cursor:
+            cursor.execute(
+                "UPDATE partie SET tour_actuel = %s WHERE id_partie = %s",
+                (etat["tour_actuel"], partie_id),
+            )
+            if etat["terminee"]:
+                cursor.execute(
+                    """
+                    UPDATE partie
+                    SET id_equipe_gagnante = %s,
+                        date_fin = CURRENT_TIMESTAMP
+                    WHERE id_partie = %s
+                    """,
+                    (gagnante_id, partie_id),
+                )
+                connexion.commit()
+    except Exception:
+        connexion.rollback()
+        pass  # si la mise à jour échoue, on n'empêche pas la partie de continuer
+    return None
 
 
 def basculer_tour(etat):
@@ -214,10 +250,7 @@ def initialiser_partie_avancee(equipe1_id, equipe2_id, taille_grille, max_tours)
 # et [0] prend la première colonne, c’est-à-dire l’id. On stocke ce nombre dans config_id.
 
 
- # %s sont remplacés par (taille_grille, max_tours, 15).
-# On enregistre la configuration cgoisi par le joueur (taille grille.. etc) 
-# les % cest taille grille et max tours et somme caracteristique (colone de base ds configuration)
-# RETURNING id_configuration cest pour recuperer l'id de la configuration qui vient d'etre creee
+
 
 
             cursor.execute(
@@ -236,11 +269,6 @@ def initialiser_partie_avancee(equipe1_id, equipe2_id, taille_grille, max_tours)
         return None, f"Erreur lors de la création : {exc}"
 
 
-    # On crée la partie qui relie les deux équipes et la configuration précédente (config_id).
-    # Là aussi, PostgreSQL renvoie le numéro de la partie (partie_id).
-    # %s sont remplacés par (equipe1_id, equipe2_id, config_id).
-    # le 1 correspond simplement à la valeur initiale de la colonne tour_actuel (le numéro du tour). On crée la partie en partant du tour numéro 1.
-    
 
     caracs = {} # on prepare un dictionnaire vide pour stocker l etat des morpions engager dans la partie 
     caracs.update(creer_caracs(morpions_eq1, 1))
@@ -365,14 +393,16 @@ def jouer_un_coup_avance(partie_id, morpion_id, ligne, colonne):
 
     inserer_journal(partie_id, f"{carac['nom']} est placé en ({ligne + 1},{colonne + 1}).")
 
-
     # on appelle verifier_victoire pour voir si la partie est gagnee
-    if verifier_victoire(etat["plateau"], joueur): 
+    gagnante_id = None
+    if verifier_victoire(etat["plateau"], joueur):
         etat["terminee"] = True
-        etat["message"] = f"Victoire de {equipe['nom']} !" # f pour inserer le nom de l equipe !! 
+        etat["message"] = f"Victoire de {equipe['nom']} !"
+        gagnante_id = equipe["id"]
     elif verifier_elimination(etat, 2 if joueur == 1 else 1):
         etat["terminee"] = True
         etat["message"] = f"Tous les morpions adverses sont éliminés. {equipe['nom']} gagne."
+        gagnante_id = equipe["id"]
     # on vérifie si la limite est atteinte
     elif etat["actions"] >= etat["max_tours"] or etat["actions"] >= etat["taille"] ** 2:
         etat["terminee"] = True
@@ -382,6 +412,30 @@ def jouer_un_coup_avance(partie_id, morpion_id, ligne, colonne):
     else:
         etat["joueur_courant"] = 2 if joueur == 1 else 1
         etat["message"] = "Coup enregistré. À l'autre équipe."
+
+    # Synchronise l'état de la partie avec la base de données
+    try:
+        with connexion.cursor() as cursor:
+            cursor.execute(
+                "UPDATE partie SET tour_actuel = %s WHERE id_partie = %s",
+                (etat["tour_actuel"], partie_id),
+            )
+            if etat["terminee"]:
+                cursor.execute(
+                    """
+                    UPDATE partie
+                    SET id_equipe_gagnante = %s,
+                        date_fin = CURRENT_TIMESTAMP
+                    WHERE id_partie = %s
+                    """,
+                    (gagnante_id, partie_id),
+                )
+                connexion.commit()
+            else:
+                connexion.commit()
+    except Exception:
+        connexion.rollback()
+
     return None
 
 #carac désigne donc le dictionnaire contenant l’état complet du morpion choisi (nom, camp, mana, état, position…)
@@ -447,11 +501,7 @@ def construire_options_sort(etat):
 
 
 
-#case.get("morpion_id") est une expression Python qui signifie :
-# « va dans le dictionnaire case et récupère la valeur associée à la clé "morpion_id" ».
-# Si cette clé n’existe pas (par exemple si la case est vide ou détruite),
-# on récupère None sans lever d’exception.
-# Avec .get("morpion_id"), si la clé n’existe pas, on récupère None sans lever d’exception.
+ 
 
 
 
@@ -478,13 +528,7 @@ def lancer_sort_quiz(partie_id, morpion_id, case_adverse, reponse):
 
     lanceur = etat["caracteristiques"].get(morpion_id) 
 # lanceur c'est celui qui lance le sort 
-# etat de la partie -> on va ensuite dans la partie caracteristique pour avoir morpion 
-# .Get retourne la valeur associée a la clé morpion_id si elle existe, ou None sinon.
-
-#Donc, cette ligne signifie : “Va dans l’état de la partie, puis dans le 
-# sous-dictionnaire des caractéristiques, et récupère 
-# (avec get) le dictionnaire de la morpion dont l’id vaut morpion_id. (par ex 5)
-# Range-le dans la variable lanceur.
+ 
 
     if not lanceur:
         return "Morpion inconnu."
@@ -509,7 +553,7 @@ def lancer_sort_quiz(partie_id, morpion_id, case_adverse, reponse):
 
     cible = etat["caracteristiques"][case["morpion_id"]] # a partir de la case cible on recupere le dico carac qui contient les infos (nom, camp, position…)
     lanceur["mana_restante"] -= 1
-    bonne_reponse = (reponse or "").strip() == "1899" #strip pr enelevers les espace , bonne rep true ou false
+    bonne_reponse = (reponse or "").strip() == "1899" 
 
 
     # etat["caracteristiques"] est un dictionnaire qui contient l’état détaillé de tous
@@ -690,14 +734,14 @@ def lancer_sort_magique(partie_id, morpion_id, case_cible, case_allie, sort_type
 # Chaque fois que l'utilisateur clique sur un bouton (créer partie, jouer, lancer un sort, etc.), 
 # le formulaire envoie une action, et ce code exécute la bonne fonction en réponse.
 
-if POST and "action" in POST:
-    action = POST["action"][0] # On récupère l’action demandée par le joueur
+if POST and "action" in POST:  # si un formulaire a été soumis avec un champ "action"
+    action = POST["action"][0]  # on lit la valeur de l’action (chaîne provenant du POST)
 
-    if action == "creer":
-        equipe1 = int(POST.get("equipe1", ["0"])[0]) # Lis l’équipe envoyée par le formulaire, ou 0 si rien n’a été envoyé, puis convertis en entie
-        equipe2 = int(POST.get("equipe2", ["0"])[0]) # cvt en entier car le formulaire envoie des strings 
-        taille = int(POST.get("taille", ["3"])[0]) # 3 est la valeur par default et 0 cv dire que c la 1r val de la list
-        max_tours = int(POST.get("max_tours", ["12"])[0])
+    if action == "creer":  # création d’une nouvelle partie avancée
+        equipe1 = int(POST.get("equipe1", ["0"])[0])  # identifiant de la première équipe (ou 0 si absent)
+        equipe2 = int(POST.get("equipe2", ["0"])[0])  # identifiant de la deuxième équipe
+        taille = int(POST.get("taille", ["3"])[0])  # taille de la grille (3x3 ou 4x4)
+        max_tours = int(POST.get("max_tours", ["12"])[0])  # limite de tours saisie
         if equipe1 == equipe2:
             REQUEST_VARS["message"] = "Choisissez deux équipes différentes."
             REQUEST_VARS["message_class"] = "alert-warning"
@@ -714,11 +758,10 @@ if POST and "action" in POST:
                 REQUEST_VARS["message_class"] = "alert-success"
                 rafraichir_partie_active(partie_id)
 
-    elif action == "jouer":
-        partie_id = int(POST.get("partie_id", ["0"])[0]) # le formulaire envoie partieid, post recupere la liste, [0] 
-        # prend la premiere valeur de la liste et ensuite on cvt en entier
-        morpion_id = int(POST.get("morpion_id", ["0"])[0])
-        case = POST.get("case", ["0,0"])[0] # on ne cvt pas directement car 2,1 nest pas un entier 
+    elif action == "jouer":  # placement classique d’un morpion
+        partie_id = int(POST.get("partie_id", ["0"])[0])  # partie concernée
+        morpion_id = POST.get("morpion_id", [""])[0]  # identifiant unique du morpion choisi
+        case = POST.get("case", ["0,0"])[0]  # coordonnées reçues sous forme "lig,col"
         try:
             lig, col = map(int, case.split(",")) # split pour decouper la chaine en deux morceau // map pr cvt en entier
         except ValueError:
@@ -732,11 +775,11 @@ if POST and "action" in POST:
             REQUEST_VARS["message_class"] = "alert-success"
         rafraichir_partie_active(partie_id)
 
-    elif action == "sort_quiz":
-        partie_id = int(POST.get("partie_id", ["0"])[0])
-        morpion_id = int(POST.get("morpion_id", ["0"])[0])
-        case_adverse = POST.get("case_adverse", ["0,0"])[0]
-        reponse = POST.get("reponse_quiz", [""])[0]
+    elif action == "sort_quiz":  # utilisation du sort quiz Jean Moulin
+        partie_id = int(POST.get("partie_id", ["0"])[0])  # partie en cours
+        morpion_id = POST.get("morpion_id", [""])[0]  # morpion lanceur
+        case_adverse = POST.get("case_adverse", ["0,0"])[0]  # cible sélectionnée
+        reponse = POST.get("reponse_quiz", [""])[0]  # réponse saisie par l’adversaire
         erreur = lancer_sort_quiz(partie_id, morpion_id, case_adverse, reponse)
         if erreur:
             REQUEST_VARS["message"] = erreur
@@ -746,10 +789,10 @@ if POST and "action" in POST:
             REQUEST_VARS["message_class"] = "alert-success"
         rafraichir_partie_active(partie_id)
 
-    elif action == "combat":
-        partie_id = int(POST.get("partie_id", ["0"])[0])
-        attaquant_id = int(POST.get("attaquant_id", ["0"])[0])
-        case_adverse = POST.get("case_adverse", [""])[0]
+    elif action == "combat":  # combat rapproché classique
+        partie_id = int(POST.get("partie_id", ["0"])[0])  # partie en cours
+        attaquant_id = POST.get("attaquant_id", [""])[0]  # morpion qui attaque
+        case_adverse = POST.get("case_adverse", [""])[0]  # coordonnée de la cible
         erreur = lancer_combat(partie_id, attaquant_id, case_adverse)
         if erreur:
             REQUEST_VARS["message"] = erreur
@@ -759,12 +802,12 @@ if POST and "action" in POST:
             REQUEST_VARS["message_class"] = "alert-success"
         rafraichir_partie_active(partie_id)
 
-    elif action == "sort_magique":
-        partie_id = int(POST.get("partie_id", ["0"])[0])
-        morpion_id = int(POST.get("morpion_id", ["0"])[0])
-        type_sort = POST.get("type_sort", ["feu"])[0]
-        case_adverse = POST.get("case_adverse", [""])[0]
-        case_allie = POST.get("case_allie", [""])[0]
+    elif action == "sort_magique":  # sorts feu / soin / armageddon
+        partie_id = int(POST.get("partie_id", ["0"])[0])  # partie cible
+        morpion_id = POST.get("morpion_id", [""])[0]  # lanceur sélectionné
+        type_sort = POST.get("type_sort", ["feu"])[0]  # type de sort choisi
+        case_adverse = POST.get("case_adverse", [""])[0]  # coordonnées ennemies éventuellement nécessaires
+        case_allie = POST.get("case_allie", [""])[0]  # coordonnées alliées (sort de soin)
         erreur = lancer_sort_magique(partie_id, morpion_id, case_adverse, case_allie, type_sort)
         if erreur:
             REQUEST_VARS["message"] = erreur
@@ -774,23 +817,29 @@ if POST and "action" in POST:
             REQUEST_VARS["message_class"] = "alert-success"
         rafraichir_partie_active(partie_id)
 
-    elif action == "abandonner":
-        partie_id = int(POST.get("partie_id", ["0"])[0])
-        if partie_id in PARTIES_AVANCEES:
-            del PARTIES_AVANCEES[partie_id]
-        REQUEST_VARS["message"] = "Partie avancée retirée de votre session."
-        REQUEST_VARS["message_class"] = "alert-warning"
-        REQUEST_VARS["partie_avancee"] = None
-        REQUEST_VARS["partie_avancee_id"] = None
+    elif action == "abandonner":  # suppression de la partie en mémoire
+        partie_id = int(POST.get("partie_id", ["0"])[0])  # identifiant à retirer
+        if partie_id in PARTIES_AVANCEES:  # on vérifie que la partie existe en session
+            del PARTIES_AVANCEES[partie_id]  # suppression de l’état conservé
+        REQUEST_VARS["message"] = "Partie avancée retirée de votre session."  # message d’information
+        REQUEST_VARS["message_class"] = "alert-warning"  # couleur d’alerte douce
+        REQUEST_VARS["partie_avancee"] = None  # on vide les variables affichées
+        REQUEST_VARS["partie_avancee_id"] = None  # plus de partie courante
 
-REQUEST_VARS["equipes_disponibles"] = charger_equipes()
+REQUEST_VARS["equipes_disponibles"] = charger_equipes()  # toujours afficher la liste des équipes dans le formulaire
 
-if REQUEST_VARS.get("partie_avancee"):
-    REQUEST_VARS["options_sort"] = construire_options_sort(REQUEST_VARS["partie_avancee"])
-elif PARTIES_AVANCEES:
-    pid, etat = next(iter(PARTIES_AVANCEES.items()))
-    rafraichir_partie_active(pid)
-    REQUEST_VARS["options_sort"] = construire_options_sort(etat)
-else:
-    REQUEST_VARS["options_sort"] = {"lanceurs": [], "cibles": [], "allies": []}
+if REQUEST_VARS.get("partie_avancee"):  # si une partie est déjà affichée côté interface
+    REQUEST_VARS["options_sort"] = construire_options_sort(REQUEST_VARS["partie_avancee"])  # on calcule les menus déroulants
+elif PARTIES_AVANCEES:  # sinon, s'il existe au moins une partie en mémoire
+    pid, etat = next(iter(PARTIES_AVANCEES.items()))  # on prend la première partie du dictionnaire
+    rafraichir_partie_active(pid)  # on synchronise REQUEST_VARS avec cette partie
+    REQUEST_VARS["options_sort"] = construire_options_sort(etat)  # et on prépare les options
+else:  # sinon aucune partie n’est disponible
+    REQUEST_VARS["options_sort"] = {"lanceurs": [], "cibles": [], "allies": []}  # on renvoie des listes vides pour éviter les erreurs
 
+
+# next iter : PARTIES_AVANCEES.items() renvoie un itérateur de couples (clé, valeur) où la clé est l’identifiant de partie (partie_id) et la valeur est l’état complet (plateau, équipes, etc.).
+# iter(...) construit l’itérateur explicite.
+# next(...) prend le premier élément de cet itérateur.
+
+# Cela évite de laisser l’interface vide quand aucune partie n’est explicitement sélectionnée. Si REQUEST_VARS["partie_avancee"] est vide mais qu’il reste au moins une partie avancée stockée en session,

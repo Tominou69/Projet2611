@@ -142,11 +142,10 @@ def extraire_morpions_selectionnes(values):  # values = liste des ids envoyés p
 
 
 def creer_equipe():
-    nom = POST.get("nom", [""])[0].strip()  
+    nom = POST.get("nom", [""])[0].strip()  # post get (nom..) renvoie les valeurs de name="nom", [0] prd la 1re val
 
-        # POST.get("nom", [""]) renvoie une liste des valeurs du champ nom
-    # [0] c la premiere valeur de la liste, strip() c pour enlever les espaces en debut et fin
-    couleur = POST.get("couleur", [""])[0].strip()
+      
+    couleur = POST.get("couleur", [""])[0].strip() 
     liste_ids_morpions_selectionnes = extraire_morpions_selectionnes(POST.get("morpions", []))
 
     
@@ -174,7 +173,9 @@ def creer_equipe():
                 "INSERT INTO equipe (nom, couleur) VALUES (%s, %s) RETURNING id_equipe",
                 (nom, couleur or None),
             )
-            new_id = cursor.fetchone()[0] # récupère l'identifiant créé et on le stocke ds new_id
+            new_id = cursor.fetchone()[0] 
+            # apres av recu l id de lequipe, cursor.Fetchone lit la seule ligne retournee 
+            # et [0] recuperer la premiere colonne, donc l'id, et tout ca est stock ds new id pr pv avoir inserer les morions
             ordre = 1 # ordre d'apparition de chaque morpion dans l'équipe
             for morpion_id in liste_ids_morpions_selectionnes:
                 cursor.execute(

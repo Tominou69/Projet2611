@@ -176,6 +176,8 @@ def jouer_un_coup(partie_id, morpion_id, ligne, colonne):
     if morpion_trouve is None:
         return "Ce morpion n'appartient pas à votre équipe."
 
+        """ ici pr les couleurs ---------------------------------------------------------------------"""
+
     etat["plateau"][ligne][colonne] = {  # on place concrètement le morpion
         "joueur": joueur,
         "morpion_id": morpion_id,

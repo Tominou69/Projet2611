@@ -142,7 +142,7 @@ def get_partie_par_duree(connexion, ordre="ASC"):
         ORDER BY duree_sec {ordre}
         LIMIT 1
     """
-    rows = execute_select_query(connexion, query, []) or []
+    rows = execute_select_query(connexion, query, []) or [] # [] : la liste de paramètres (vide :%s dans cette requête : NN) 
     if not rows:
         return None
     row = rows[0]
